@@ -1,8 +1,8 @@
 package com.cocos.portfolio_service;
 
-import com.cocos.portfolio_service.instrument.application.InstrumentSearch;
-import com.cocos.portfolio_service.order.application.OrderCommands;
-import com.cocos.portfolio_service.portfolio.application.PortfolioQuery;
+import com.cocos.portfolio_service.instrument.application.IInstrument;
+import com.cocos.portfolio_service.order.application.IOrderService;
+import com.cocos.portfolio_service.portfolio.application.IPortfolioService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -11,13 +11,13 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 class PortfolioServiceApplicationTests {
 
 	@MockitoBean
-	private PortfolioQuery portfolioQuery;
+	private IPortfolioService portfolioQuery;
 
 	@MockitoBean
-	private InstrumentSearch instrumentSearch;
+	private IInstrument instrumentSearch;
 
 	@MockitoBean
-	private OrderCommands orderCommands;
+	private IOrderService orderCommands;
 
 	@Test
 	void contextLoads() {

@@ -1,6 +1,7 @@
 package com.cocos.portfolio_service.portfolio.api;
 
-import com.cocos.portfolio_service.portfolio.application.PortfolioQuery;
+import com.cocos.portfolio_service.portfolio.application.IPortfolioService;
+import com.cocos.portfolio_service.portfolio.domain.Portfolio;
 import com.cocos.portfolio_service.shared.api.GlobalExceptionHandler;
 import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
 import org.junit.jupiter.api.Test;
@@ -26,12 +27,19 @@ class PortfolioControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private PortfolioQuery portfolioQuery;
+    private IPortfolioService portfolioQuery;
+
+    @MockitoBean
+    private PortfolioMapper portfolioMapper;
 
     @Test
     void whenUserExists_thenGetPortfolio_returnsPortfolio() throws Exception {
         // ARRANGE
-        when(portfolioQuery.getPortfolio(7L)).thenReturn(new PortfolioResponse(
+        var portfolio = new Portfolio(new BigDecimal("12500.00"), new BigDecimal("2500.00"), List.of(
+                new Portfolio.Instrument(3L, "ABC", "Example Corp", 10,
+                        new BigDecimal("10000.00"), new BigDecimal("4.25"))));
+        when(portfolioQuery.getPortfolio(7L)).thenReturn(portfolio);
+        when(portfolioMapper.toResponse(portfolio)).thenReturn(new PortfolioResponse(
                 new BigDecimal("12500.00"), new BigDecimal("2500.00"), List.of(
                 new PortfolioResponse.InstrumentResponse(3L, "ABC", "Example Corp", 10,
                         new BigDecimal("10000.00"), new BigDecimal("4.25")))));

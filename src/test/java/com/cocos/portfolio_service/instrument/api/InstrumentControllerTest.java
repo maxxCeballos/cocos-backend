@@ -1,6 +1,8 @@
 package com.cocos.portfolio_service.instrument.api;
 
-import com.cocos.portfolio_service.instrument.application.InstrumentSearch;
+import com.cocos.portfolio_service.instrument.application.IInstrument;
+import com.cocos.portfolio_service.instrument.domain.Instrument;
+import com.cocos.portfolio_service.instrument.domain.InstrumentSearchResult;
 import com.cocos.portfolio_service.shared.api.GlobalExceptionHandler;
 import com.cocos.portfolio_service.shared.api.PageResponse;
 import org.junit.jupiter.api.Test;
@@ -26,12 +28,18 @@ class InstrumentControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private InstrumentSearch instrumentSearch;
+    private IInstrument instrumentSearch;
+
+    @MockitoBean
+    private InstrumentMapper instrumentMapper;
 
     @Test
     void whenSearchReturnsNoInstruments_thenSearch_returnsEmptyPage() throws Exception {
         // ARRANGE
-        when(instrumentSearch.search("missing", 0, 10)).thenReturn(new PageResponse<>(List.of(), 0, 10, 0, 0));
+        var searchResult = new InstrumentSearchResult(List.of(), 0, 10, 0, 0);
+        var pageResponse = new PageResponse<InstrumentResponse>(List.of(), 0, 10, 0, 0);
+        when(instrumentSearch.search("missing", 0, 10)).thenReturn(searchResult);
+        when(instrumentMapper.toPageResponse(searchResult)).thenReturn(pageResponse);
 
         // ACT
         var result = mockMvc.perform(get("/api/instruments").param("query", "missing")
@@ -52,10 +60,16 @@ class InstrumentControllerTest {
     @Test
     void whenSearchReturnsMultipleInstruments_thenSearch_returnsPagedContent() throws Exception {
         // ARRANGE
-        when(instrumentSearch.search("tech", 1, 2)).thenReturn(new PageResponse<>(List.of(
+        var searchResult = new InstrumentSearchResult(List.of(
+                new Instrument(2L, "AAPL", "Apple Inc.", "ACCION", new BigDecimal("30000.00")),
+                new Instrument(3L, "MSFT", "Microsoft Corp.", "ACCION", new BigDecimal("40000.00"))),
+                1, 2, 4, 2);
+        var pageResponse = new PageResponse<>(List.of(
                 new InstrumentResponse(2L, "AAPL", "Apple Inc.", "ACCION", new BigDecimal("30000.00")),
                 new InstrumentResponse(3L, "MSFT", "Microsoft Corp.", "ACCION", new BigDecimal("40000.00"))),
-                1, 2, 4, 2));
+                1, 2, 4, 2);
+        when(instrumentSearch.search("tech", 1, 2)).thenReturn(searchResult);
+        when(instrumentMapper.toPageResponse(searchResult)).thenReturn(pageResponse);
 
         // ACT
         var result = mockMvc.perform(get("/api/instruments").param("query", "tech")
