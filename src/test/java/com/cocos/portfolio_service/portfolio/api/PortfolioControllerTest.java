@@ -1,0 +1,87 @@
+package com.cocos.portfolio_service.portfolio.api;
+
+import com.cocos.portfolio_service.portfolio.application.PortfolioQuery;
+import com.cocos.portfolio_service.shared.api.GlobalExceptionHandler;
+import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(PortfolioController.class)
+@Import(GlobalExceptionHandler.class)
+class PortfolioControllerTest {
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockitoBean
+    private PortfolioQuery portfolioQuery;
+
+    @Test
+    void whenUserExists_thenGetPortfolio_returnsPortfolio() throws Exception {
+        // ARRANGE
+        when(portfolioQuery.getPortfolio(7L)).thenReturn(new PortfolioResponse(
+                new BigDecimal("12500.00"), new BigDecimal("2500.00"), List.of(
+                new PortfolioResponse.InstrumentResponse(3L, "ABC", "Example Corp", 10,
+                        new BigDecimal("10000.00"), new BigDecimal("4.25")))));
+
+        // ACT
+        var result = mockMvc.perform(get("/api/portfolio/users/7"));
+
+        // ASSERT
+        result
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalAccountValue").value(12500.00))
+                .andExpect(jsonPath("$.availableCash").value(2500.00))
+                .andExpect(jsonPath("$.instruments[0].ticker").value("ABC"))
+                .andExpect(jsonPath("$.instruments[0].quantity").value(10));
+
+        verify(portfolioQuery).getPortfolio(7L);
+    }
+
+    @Test
+    void whenUserDoesNotExist_thenGetPortfolio_returnsNotFound() throws Exception {
+        // ARRANGE
+        when(portfolioQuery.getPortfolio(404L)).thenThrow(new UserNotFoundException(404L));
+
+        // ACT
+        var result = mockMvc.perform(get("/api/portfolio/users/404"));
+
+        // ASSERT
+        result
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.message").value("User with id 404 was not found"))
+                .andExpect(jsonPath("$.path").value("/api/portfolio/users/404"));
+
+        verify(portfolioQuery).getPortfolio(404L);
+    }
+
+    @Test
+    void whenPortfolioQueryThrows_thenGetPortfolio_returnsInternalServerError() throws Exception {
+        // ARRANGE
+        when(portfolioQuery.getPortfolio(7L)).thenThrow(new IllegalStateException("database unavailable"));
+
+        // ACT
+        var result = mockMvc.perform(get("/api/portfolio/users/7"));
+
+        // ASSERT
+        result
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.message").value("An unexpected error occurred"));
+
+        verify(portfolioQuery).getPortfolio(7L);
+    }
+}

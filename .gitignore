@@ -34,3 +34,8 @@ gradle/
 
 # macOS
 .DS_Store
+
+# agents
+.agents
+.codex
+skills-lock.json
