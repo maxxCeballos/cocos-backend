@@ -2,6 +2,7 @@ package com.cocos.portfolio_service.order.domain;
 
 import com.cocos.portfolio_service.order.domain.enums.OrderSide;
 import com.cocos.portfolio_service.order.domain.enums.OrderType;
+import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -14,6 +15,6 @@ public record Order(
         Long quantity,
         BigDecimal price,
         OrderType type,
-        String status,
+        OrderStatus status,
         Instant datetime) {
 }

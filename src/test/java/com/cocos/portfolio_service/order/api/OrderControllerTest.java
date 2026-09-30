@@ -6,6 +6,7 @@ import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.OrderToSubmit;
 import com.cocos.portfolio_service.order.domain.enums.OrderSide;
 import com.cocos.portfolio_service.order.domain.enums.OrderType;
+import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
 import com.cocos.portfolio_service.shared.api.GlobalExceptionHandler;
 import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
 import org.junit.jupiter.api.Test;
@@ -129,7 +130,7 @@ class OrderControllerTest {
 
     private Order order(Long id, Long userId, String status) {
         return new Order(id, userId, 2L, OrderSide.BUY, 3L, new BigDecimal("100.00"),
-                OrderType.MARKET, status, Instant.parse("2026-09-29T12:00:00Z"));
+                OrderType.MARKET, OrderStatus.valueOf(status), Instant.parse("2026-09-29T12:00:00Z"));
     }
 
     private OrderResponse response(Long id, Long userId, String status) {

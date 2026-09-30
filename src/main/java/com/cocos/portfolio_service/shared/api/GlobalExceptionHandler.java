@@ -1,6 +1,9 @@
 package com.cocos.portfolio_service.shared.api;
 
 import com.cocos.portfolio_service.instrument.domain.errors.InstrumentNotFoundException;
+import com.cocos.portfolio_service.marketdata.domain.errors.MarketDataNotFoundException;
+import com.cocos.portfolio_service.marketdata.domain.errors.InvalidMarketDataException;
+import com.cocos.portfolio_service.order.domain.errors.InvalidOrderException;
 import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -19,7 +22,7 @@ import java.time.Instant;
 public class GlobalExceptionHandler {
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    @ExceptionHandler({UserNotFoundException.class, InstrumentNotFoundException.class})
+    @ExceptionHandler({UserNotFoundException.class, InstrumentNotFoundException.class, MarketDataNotFoundException.class})
     public ResponseEntity<ApiErrorResponse> handleNotFound(RuntimeException exception, HttpServletRequest request) {
         logger.warn("Resource not found for {} {}: {}", request.getMethod(), request.getRequestURI(), exception.getMessage());
         return error(HttpStatus.NOT_FOUND, exception.getMessage(), request);
@@ -28,7 +31,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             MethodArgumentNotValidException.class,
             ConstraintViolationException.class,
-            HttpMessageNotReadableException.class
+            HttpMessageNotReadableException.class,
+            InvalidOrderException.class,
+            InvalidMarketDataException.class
     })
     public ResponseEntity<ApiErrorResponse> handleBadRequest(Exception exception, HttpServletRequest request) {
         logger.warn("Invalid request for {} {}: {}", request.getMethod(), request.getRequestURI(), exception.getMessage());
