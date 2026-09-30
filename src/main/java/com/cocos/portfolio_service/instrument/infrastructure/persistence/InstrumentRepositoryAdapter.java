@@ -27,11 +27,11 @@ public class InstrumentRepositoryAdapter implements InstrumentRepository {
 
     @Override
     public Optional<Instrument> findById(Long instrumentId) {
-        return instruments.findById(instrumentId).map(this::toDomain);
+        return instruments.findById(Math.toIntExact(instrumentId)).map(this::toDomain);
     }
 
     private Instrument toDomain(InstrumentEntity entity) {
-        var close = marketData.findLatestByInstrumentId(entity.getId()).map(md -> md.close()).orElse(null);
-        return new Instrument(entity.getId(), entity.getTicker(), entity.getName(), entity.getType(), close);
+        var close = marketData.findLatestByInstrumentId(entity.getId().longValue()).map(md -> md.close()).orElse(null);
+        return new Instrument(entity.getId().longValue(), entity.getTicker(), entity.getName(), entity.getType(), close);
     }
 }

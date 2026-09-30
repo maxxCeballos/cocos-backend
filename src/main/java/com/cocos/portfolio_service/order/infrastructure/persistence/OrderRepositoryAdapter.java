@@ -17,7 +17,7 @@ public class OrderRepositoryAdapter implements OrderRepository {
 
     @Override
     public List<Order> findByUserIdAndStatus(Long userId, OrderStatus status) {
-        return repository.findByUserIdAndStatus(userId, status).stream().map(OrderEntity::toDomain).toList();
+        return repository.findByUserIdAndStatus(Math.toIntExact(userId), status).stream().map(OrderEntity::toDomain).toList();
     }
 
     @Override

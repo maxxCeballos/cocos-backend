@@ -5,6 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-public interface OrderJpaRepository extends JpaRepository<OrderEntity, Long> {
-    List<OrderEntity> findByUserIdAndStatus(Long userId, OrderStatus status);
+public interface OrderJpaRepository extends JpaRepository<OrderEntity, Integer> {
+    List<OrderEntity> findByUserIdAndStatus(Integer userId, OrderStatus status);
 }

@@ -4,7 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface InstrumentJpaRepository extends JpaRepository<InstrumentEntity, Long> {
+public interface InstrumentJpaRepository extends JpaRepository<InstrumentEntity, Integer> {
     Page<InstrumentEntity> findByTickerContainingIgnoreCaseOrNameContainingIgnoreCase(
             String ticker, String name, Pageable pageable);
 }

@@ -14,18 +14,19 @@ import java.time.LocalDate;
 @Table(name = "marketdata")
 public class MarketDataEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
     @Column(name = "instrumentid")
-    private Long instrumentId;
+    private Integer instrumentId;
+    @Column(precision = 10, scale = 2)
     private BigDecimal close;
-    @Column(name = "previousclose")
+    @Column(name = "previousclose", precision = 10, scale = 2)
     private BigDecimal previousClose;
     private LocalDate date;
 
     protected MarketDataEntity() {}
 
-    public Long getId() { return id; }
-    public Long getInstrumentId() { return instrumentId; }
+    public Integer getId() { return id; }
+    public Integer getInstrumentId() { return instrumentId; }
     public BigDecimal getClose() { return close; }
     public BigDecimal getPreviousClose() { return previousClose; }
     public LocalDate getDate() { return date; }

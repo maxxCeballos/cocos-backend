@@ -13,6 +13,6 @@ public class UserRepositoryAdapter implements UserRepository {
 
     @Override
     public boolean existsById(Long userId) {
-        return repository.existsById(userId);
+        return repository.existsById(Math.toIntExact(userId));
     }
 }

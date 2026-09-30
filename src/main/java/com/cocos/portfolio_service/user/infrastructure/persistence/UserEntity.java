@@ -11,9 +11,10 @@ import jakarta.persistence.Table;
 @Table(name = "users")
 public class UserEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
+    @Column(length = 255)
     private String email;
-    @Column(name = "accountnumber")
+    @Column(name = "accountnumber", length = 20)
     private String accountNumber;
 
     protected UserEntity() {}

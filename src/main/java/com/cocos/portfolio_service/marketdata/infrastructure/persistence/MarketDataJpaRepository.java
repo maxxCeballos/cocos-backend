@@ -4,6 +4,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface MarketDataJpaRepository extends JpaRepository<MarketDataEntity, Long> {
-    Optional<MarketDataEntity> findFirstByInstrumentIdOrderByDateDescIdDesc(Long instrumentId);
+public interface MarketDataJpaRepository extends JpaRepository<MarketDataEntity, Integer> {
+    Optional<MarketDataEntity> findFirstByInstrumentIdOrderByDateDescIdDesc(Integer instrumentId);
 }

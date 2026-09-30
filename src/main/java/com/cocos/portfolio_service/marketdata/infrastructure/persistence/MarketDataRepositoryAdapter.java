@@ -16,8 +16,8 @@ public class MarketDataRepositoryAdapter implements MarketDataRepository {
 
     @Override
     public Optional<MarketData> findLatestByInstrumentId(Long instrumentId) {
-        return repository.findFirstByInstrumentIdOrderByDateDescIdDesc(instrumentId)
-                .map(entity -> new MarketData(entity.getId(), entity.getInstrumentId(), entity.getClose(),
+        return repository.findFirstByInstrumentIdOrderByDateDescIdDesc(Math.toIntExact(instrumentId))
+                .map(entity -> new MarketData(entity.getId().longValue(), entity.getInstrumentId().longValue(), entity.getClose(),
                         entity.getPreviousClose(), entity.getDate()));
     }
 }

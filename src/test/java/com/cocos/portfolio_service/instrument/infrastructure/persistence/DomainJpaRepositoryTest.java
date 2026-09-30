@@ -46,11 +46,11 @@ class DomainJpaRepositoryTest {
         // ARRANGE
 
         // ACT
-        var userExists = users.existsById(1L);
+        var userExists = users.existsById(1);
         var instrumentPage = instruments.findByTickerContainingIgnoreCaseOrNameContainingIgnoreCase(
                 "gal", "gal", org.springframework.data.domain.PageRequest.of(0, 10));
-        var latestPrice = marketData.findFirstByInstrumentIdOrderByDateDescIdDesc(1L).orElseThrow();
-        var filledOrders = orders.findByUserIdAndStatus(1L, OrderStatus.FILLED);
+        var latestPrice = marketData.findFirstByInstrumentIdOrderByDateDescIdDesc(1).orElseThrow();
+        var filledOrders = orders.findByUserIdAndStatus(1, OrderStatus.FILLED);
 
         // ASSERT
         assertTrue(userExists);

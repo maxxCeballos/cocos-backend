@@ -1,0 +1,9 @@
+.git
+.gradle
+build
+**/build
+.codex
+.agents
+.env
+.env.*
+src/test
