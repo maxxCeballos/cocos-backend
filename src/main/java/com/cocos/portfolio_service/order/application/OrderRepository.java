@@ -7,6 +7,6 @@ import java.util.List;
 
 public interface OrderRepository {
     List<Order> findByUserIdAndStatus(Long userId, OrderStatus status);
-    List<Order> findByUserId(Long userId);
+    List<Order> findEffectiveOrdersByUserId(Long userId);
     Order save(Order order);
 }

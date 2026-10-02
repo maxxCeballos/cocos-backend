@@ -25,8 +25,8 @@ public class OrderRepositoryAdapter implements OrderRepository {
 
 
     @Override
-    public List<Order> findByUserId(Long userId) {
-        List<OrderEntity> ordersDB = repository.findByUserId(userId);
+    public List<Order> findEffectiveOrdersByUserId(Long userId) {
+        List<OrderEntity> ordersDB = repository.findByUserIdAndStatusNotIn(userId, List.of(OrderStatus.CANCELLED, OrderStatus.REJECTED));
         return ordersDB.stream().map(orderMapper::toOrderDomain).toList();
     }
 

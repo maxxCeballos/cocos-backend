@@ -49,7 +49,7 @@ class PortfolioServiceTest {
     void whenUserHasNoFilledOrders_thenGetPortfolio_returnsEmptyZeroBalance() {
         // ARRANGE
         when(userRepository.existsById(7L)).thenReturn(true);
-        when(orderRepository.findByUserId(7L, OrderStatus.FILLED)).thenReturn(List.of());
+        when(orderRepository.findEffectiveOrdersByUserId(7L, OrderStatus.FILLED)).thenReturn(List.of());
 
         // ACT
         var result = portfolioService.getPortfolio(7L);
@@ -64,7 +64,7 @@ class PortfolioServiceTest {
     void whenUserHasOnlyCashMovements_thenGetPortfolio_returnsCashOnlyAccount() {
         // ARRANGE
         when(userRepository.existsById(7L)).thenReturn(true);
-        when(orderRepository.findByUserId(7L, OrderStatus.FILLED)).thenReturn(List.of(
+        when(orderRepository.findEffectiveOrdersByUserId(7L, OrderStatus.FILLED)).thenReturn(List.of(
                 order(OrderSide.CASH_IN, 500L, 65L, "1.00"),
                 order(OrderSide.CASH_OUT, 125L, 65L, "1.00")));
 
@@ -81,7 +81,7 @@ class PortfolioServiceTest {
     void whenUserHasBuyAndSellMovements_thenGetPortfolio_calculatesCashHoldingsAndDailyReturn() {
         // ARRANGE
         when(userRepository.existsById(7L)).thenReturn(true);
-        when(orderRepository.findByUserId(7L, OrderStatus.FILLED)).thenReturn(List.of(
+        when(orderRepository.findEffectiveOrdersByUserId(7L, OrderStatus.FILLED)).thenReturn(List.of(
                 order(OrderSide.CASH_IN, 1000L, 65L, "1.00"),
                 order(OrderSide.BUY, 2L, 3L, "100.00"),
                 order(OrderSide.SELL, 1L, 3L, "150.00")));
@@ -106,7 +106,7 @@ class PortfolioServiceTest {
     void whenHoldingHasNoMarketData_thenGetPortfolio_throwsMarketDataNotFound() {
         // ARRANGE
         when(userRepository.existsById(7L)).thenReturn(true);
-        when(orderRepository.findByUserId(7L, OrderStatus.FILLED))
+        when(orderRepository.findEffectiveOrdersByUserId(7L, OrderStatus.FILLED))
                 .thenReturn(List.of(order(OrderSide.BUY, 2L, 3L, "100.00")));
         when(instrumentRepository.findById(3L)).thenReturn(Optional.of(
                 new Instrument(3L, "GGAL", "Grupo Galicia", "ACCIONES", null)));

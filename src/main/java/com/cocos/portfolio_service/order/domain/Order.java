@@ -16,4 +16,16 @@ public record Order(
         OrderType type,
         OrderStatus status,
         LocalDateTime datetime) {
+
+    public boolean isCashOnHold() {
+        return this.side().equals(OrderSide.BUY) && this.status().equals(OrderStatus.NEW);
+    }
+
+    public boolean isShareOnHold() {
+        return this.side().equals(OrderSide.SELL) && this.status().equals(OrderStatus.NEW);
+    }
+
+    public boolean swapToCash() {
+        return this.side().equals(OrderSide.SELL) && this.status().equals(OrderStatus.FILLED);
+    }
 }

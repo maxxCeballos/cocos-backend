@@ -37,8 +37,7 @@ class PortfolioService implements IPortfolioService {
     public Portfolio getPortfolio(Long userId) {
         // TODO: make this repositories call concurrent
         Optional<User> userOpt = userRepository.findById(userId);
-        // TODO: filter orders in repository not contains rejected or cancelled
-        List<Order> orders = orderRepository.findByUserId(userId);
+        List<Order> orders = orderRepository.findEffectiveOrdersByUserId(userId);
 
         if(userOpt.isEmpty()) throw new UserNotFoundException(userId);
         List<Long> instrumentIds = orders.stream().map(Order::instrumentId).toList();
@@ -99,12 +98,12 @@ class PortfolioService implements IPortfolioService {
     private BigDecimal calculateAvailableCash(List<Order> orders) {
         BigDecimal cash = BigDecimal.ZERO;
 
-        List<Order> executedOrders = orders.stream().filter(order -> Objects.equals(OrderStatus.FILLED, order.status())).toList();
+        List<Order> ordersToCompute = orders.stream().filter(order -> !order.isShareOnHold()).toList();
 
-        for (Order order: executedOrders) {
+        for (Order order: ordersToCompute) {
             BigDecimal valueToOperate = order.price().multiply(BigDecimal.valueOf(order.size()));
 
-            if(order.side() == OrderSide.CASH_IN || order.side() == OrderSide.SELL) {
+            if(order.side() == OrderSide.CASH_IN || order.swapToCash() || order.isCashOnHold()) {
                 cash = cash.add(valueToOperate);
                 continue;
             }
