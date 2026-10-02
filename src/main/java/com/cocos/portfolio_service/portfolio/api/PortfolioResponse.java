@@ -14,7 +14,7 @@ public record PortfolioResponse(
             Long instrumentId,
             String ticker,
             String name,
-            long quantity,
+            long size,
             BigDecimal marketValue,
             BigDecimal totalReturnPercent) {
     }

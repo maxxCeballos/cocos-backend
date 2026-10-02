@@ -2,6 +2,7 @@ package com.cocos.portfolio_service.portfolio.api;
 
 import com.cocos.portfolio_service.portfolio.application.IPortfolioService;
 import com.cocos.portfolio_service.portfolio.domain.Portfolio;
+import com.cocos.portfolio_service.portfolio.utils.mappers.PortfolioMapper;
 import com.cocos.portfolio_service.shared.api.GlobalExceptionHandler;
 import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
 import org.junit.jupiter.api.Test;

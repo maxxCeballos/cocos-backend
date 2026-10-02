@@ -37,6 +37,7 @@ class PortfolioService implements IPortfolioService {
     public Portfolio getPortfolio(Long userId) {
         // TODO: make this repositories call concurrent
         Optional<User> userOpt = userRepository.findById(userId);
+        // TODO: filter orders in repository not contains rejected or cancelled
         List<Order> orders = orderRepository.findByUserId(userId);
 
         if(userOpt.isEmpty()) throw new UserNotFoundException(userId);
@@ -51,7 +52,7 @@ class PortfolioService implements IPortfolioService {
         BigDecimal stockMarketValue = calculateOrdersFilledValue(orders, marketsData);
         BigDecimal ordersPendingValue = calculateOrdersPendingValue(orders, marketsData);
         BigDecimal totalAccountValue = availableCash.add(stockMarketValue).add(ordersPendingValue);
-        List<Portfolio.Instrument> instrumentInfoAggregated = aggregateInstrumentInfo(orders, instruments);
+        List<Portfolio.Instrument> instrumentInfoAggregated = aggregateInstrumentInfo(orders, marketsData, instruments);
 
         return new Portfolio(userOpt.get().accountNumber(), "AR$", totalAccountValue, availableCash, instrumentInfoAggregated);
     }
@@ -84,18 +85,7 @@ class PortfolioService implements IPortfolioService {
         List<Order> ordersToEvaluate = orders.stream().filter(order -> order.status().equals(OrderStatus.FILLED) && !List.of(OrderSide.CASH_IN, OrderSide.CASH_OUT).contains(order.side())).toList();
         Map<Long, MarketData> instrumentMarketdataMap = marketsData.stream().collect(Collectors.toMap(MarketData::instrumentId, Function.identity()));
 
-        Map<Long, Long> instrumentCantMap = new HashMap<>();
-
-        for (Order order: ordersToEvaluate) {
-            if(!instrumentCantMap.containsKey(order.instrumentId())) {
-                Long firstCant = order.side() == OrderSide.BUY ? order.size() : -order.size();
-                instrumentCantMap.put(order.instrumentId(), firstCant);
-            } else {
-                Long valueToModify = instrumentCantMap.get(order.instrumentId());
-                valueToModify = order.side() == OrderSide.BUY ? (valueToModify + order.size()) : (valueToModify - order.size());
-                instrumentCantMap.put(order.instrumentId(), valueToModify);
-            }
-        }
+        Map<Long, Long> instrumentCantMap = calculateInstrumentCantMap(ordersToEvaluate);
 
         for (Map.Entry<Long, Long> entry : instrumentCantMap.entrySet()) {
             MarketData instMarketdata = instrumentMarketdataMap.get(entry.getKey());
@@ -109,9 +99,7 @@ class PortfolioService implements IPortfolioService {
     private BigDecimal calculateAvailableCash(List<Order> orders) {
         BigDecimal cash = BigDecimal.ZERO;
 
-        List<Order> executedOrders = orders.stream().filter(
-                order -> !List.of(OrderStatus.REJECTED, OrderStatus.CANCELLED, OrderStatus.NEW).contains(order.status())
-        ).toList();
+        List<Order> executedOrders = orders.stream().filter(order -> Objects.equals(OrderStatus.FILLED, order.status())).toList();
 
         for (Order order: executedOrders) {
             BigDecimal valueToOperate = order.price().multiply(BigDecimal.valueOf(order.size()));
@@ -127,33 +115,50 @@ class PortfolioService implements IPortfolioService {
         return cash;
     }
 
-    private List<Portfolio.Instrument> aggregateInstrumentInfo(List<Order> orders, List<Instrument> instruments) {
-        // TODO: aca hay que trabajar un poco mas.
-        // Los instrumentos hay que agruparlos por id y ver la forma de ir haciendo un histograma a medida que fue comprando y vendiendo cuanto hizo de rendimiento por dia.
-
+    private List<Portfolio.Instrument> aggregateInstrumentInfo(List<Order> orders, List<MarketData> marketsData, List<Instrument> instruments) {
         ArrayList<Portfolio.Instrument> instrumentInfoAggregated = new ArrayList<>();
 
-        List<Order> executedOrders = orders.stream().filter(order -> order.status() == OrderStatus.FILLED ).toList();
-        List<Instrument> instrumentsToCalculate = instruments.stream().filter(inst -> !Objects.equals(inst.type(), "MONEDA")).toList(); // TODO: make MONEDA like enum
+        List<Order> ordersToEvaluate = orders.stream().filter(order -> order.status().equals(OrderStatus.FILLED) && !List.of(OrderSide.CASH_IN, OrderSide.CASH_OUT).contains(order.side())).toList();
+        Map<Long, MarketData> instrumentMarketdataMap = marketsData.stream().collect(Collectors.toMap(MarketData::instrumentId, Function.identity()));
+        Map<Long, Instrument> instrumentsMap = instruments.stream().collect(Collectors.toMap(Instrument::id, Function.identity()));
 
-        Map<Long, Instrument> instrumentMap = instrumentsToCalculate.stream().collect(Collectors.toMap(Instrument::id, Function.identity()));
+        Map<Long, Long> instrumentCantMap = calculateInstrumentCantMap(ordersToEvaluate);
+        Set<Long> instrumentIds = ordersToEvaluate.stream()
+                .map(Order::instrumentId)
+                .collect(Collectors.toSet());
 
-        for (Order order: executedOrders) {
-            Instrument instrument = instrumentMap.get(order.instrumentId());
-            if(instrument == null) continue;
 
-            instrumentInfoAggregated.add(
-                new Portfolio.Instrument(
-                    instrument.id(),
+        for(Long instrumentId: instrumentIds) {
+            Instrument instrument = instrumentsMap.get(instrumentId);
+            MarketData marketData = instrumentMarketdataMap.get(instrumentId);
+            Long size = instrumentCantMap.get(instrumentId);
+
+            instrumentInfoAggregated.add(new Portfolio.Instrument(
+                    instrumentId,
                     instrument.ticker(),
                     instrument.name(),
-                    0,
-                    BigDecimal.ZERO,
+                    size,
+                    marketData.close().multiply(BigDecimal.valueOf(size)),
                     BigDecimal.ZERO
-                )
-            );
+            ));
         }
 
         return instrumentInfoAggregated;
+    }
+
+    private Map<Long, Long> calculateInstrumentCantMap(List<Order> ordersToEvaluate) {
+        Map<Long, Long> instrumentCantMap = new HashMap<>();
+
+        for (Order order: ordersToEvaluate) {
+            if(!instrumentCantMap.containsKey(order.instrumentId())) {
+                Long firstCant = order.side() == OrderSide.BUY ? order.size() : -order.size();
+                instrumentCantMap.put(order.instrumentId(), firstCant);
+            } else {
+                Long valueToModify = instrumentCantMap.get(order.instrumentId());
+                valueToModify = order.side() == OrderSide.BUY ? (valueToModify + order.size()) : (valueToModify - order.size());
+                instrumentCantMap.put(order.instrumentId(), valueToModify);
+            }
+        }
+        return instrumentCantMap;
     }
 }

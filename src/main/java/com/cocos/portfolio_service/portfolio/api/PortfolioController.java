@@ -1,8 +1,8 @@
 package com.cocos.portfolio_service.portfolio.api;
 
 import com.cocos.portfolio_service.portfolio.application.IPortfolioService;
+import com.cocos.portfolio_service.portfolio.utils.mappers.PortfolioMapper;
 import com.cocos.portfolio_service.shared.api.ApiErrorResponse;
-import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
