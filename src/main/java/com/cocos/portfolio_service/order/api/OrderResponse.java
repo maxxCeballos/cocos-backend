@@ -1,7 +1,7 @@
 package com.cocos.portfolio_service.order.api;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 public record OrderResponse(
         Long id,
@@ -12,5 +12,5 @@ public record OrderResponse(
         BigDecimal price,
         String type,
         String status,
-        Instant datetime) {
+        LocalDateTime datetime) {
 }

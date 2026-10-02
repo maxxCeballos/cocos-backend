@@ -53,7 +53,7 @@ class PortfolioControllerTest {
                 .andExpect(jsonPath("$.totalAccountValue").value(12500.00))
                 .andExpect(jsonPath("$.availableCash").value(2500.00))
                 .andExpect(jsonPath("$.instruments[0].ticker").value("ABC"))
-                .andExpect(jsonPath("$.instruments[0].quantity").value(10));
+                .andExpect(jsonPath("$.instruments[0].size").value(10));
 
         verify(portfolioQuery).getPortfolio(7L);
     }

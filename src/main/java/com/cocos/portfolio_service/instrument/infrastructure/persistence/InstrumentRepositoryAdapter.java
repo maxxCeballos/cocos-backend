@@ -2,21 +2,22 @@ package com.cocos.portfolio_service.instrument.infrastructure.persistence;
 
 import com.cocos.portfolio_service.instrument.application.InstrumentRepository;
 import com.cocos.portfolio_service.instrument.domain.Instrument;
-import com.cocos.portfolio_service.marketdata.domain.MarketDataRepository;
+import com.cocos.portfolio_service.instrument.utils.mappers.InstrumentMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public class InstrumentRepositoryAdapter implements InstrumentRepository {
     private final InstrumentJpaRepository instruments;
-    private final MarketDataRepository marketData;
+    private final InstrumentMapper instrumentMapper;
 
-    public InstrumentRepositoryAdapter(InstrumentJpaRepository instruments, MarketDataRepository marketData) {
+    public InstrumentRepositoryAdapter(InstrumentJpaRepository instruments, InstrumentMapper instrumentMapper) {
         this.instruments = instruments;
-        this.marketData = marketData;
+        this.instrumentMapper = instrumentMapper;
     }
 
     @Override
@@ -27,11 +28,15 @@ public class InstrumentRepositoryAdapter implements InstrumentRepository {
 
     @Override
     public Optional<Instrument> findById(Long instrumentId) {
-        return instruments.findById(Math.toIntExact(instrumentId)).map(this::toDomain);
+        return instruments.findById(instrumentId).map(this::toDomain);
+    }
+
+    public List<Instrument> findAllById(List<Long> instrumentIds) {
+        List<InstrumentEntity> instrumentsDB = instruments.findAllById(instrumentIds);
+        return instrumentsDB.stream().map(instrumentMapper::toInstrumentDomain).toList();
     }
 
     private Instrument toDomain(InstrumentEntity entity) {
-        var close = marketData.findLatestByInstrumentId(entity.getId().longValue()).map(md -> md.close()).orElse(null);
-        return new Instrument(entity.getId().longValue(), entity.getTicker(), entity.getName(), entity.getType(), close);
+        return new Instrument(entity.getId(), entity.getTicker(), entity.getName(), entity.getType());
     }
 }

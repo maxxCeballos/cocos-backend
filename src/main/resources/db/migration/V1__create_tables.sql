@@ -1,20 +1,20 @@
 CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     email VARCHAR(255),
     accountnumber VARCHAR(20)
 );
 
 CREATE TABLE instruments (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     ticker VARCHAR(10),
     name VARCHAR(255),
     type VARCHAR(10)
 );
 
 CREATE TABLE orders (
-    id SERIAL PRIMARY KEY,
-    instrumentid INTEGER,
-    userid INTEGER,
+    id BIGSERIAL PRIMARY KEY,
+    instrumentid BIGINT,
+    userid BIGINT,
     size INTEGER,
     price NUMERIC(10, 2),
     type VARCHAR(10),
@@ -26,8 +26,8 @@ CREATE TABLE orders (
 );
 
 CREATE TABLE marketdata (
-    id SERIAL PRIMARY KEY,
-    instrumentid INTEGER,
+    id BIGSERIAL PRIMARY KEY,
+    instrumentid BIGINT,
     high NUMERIC(10, 2),
     low NUMERIC(10, 2),
     open NUMERIC(10, 2),

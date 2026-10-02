@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public record Portfolio(
+        String userAccountNumber,
+        String currency,
         BigDecimal totalAccountValue,
         BigDecimal availableCash,
         List<Instrument> instruments) {
@@ -12,7 +14,7 @@ public record Portfolio(
             Long instrumentId,
             String ticker,
             String name,
-            long quantity,
+            long size,
             BigDecimal marketValue,
             BigDecimal totalReturnPercent) {
     }

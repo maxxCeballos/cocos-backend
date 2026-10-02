@@ -1,6 +1,5 @@
 package com.cocos.portfolio_service.instrument.infrastructure.persistence;
 
-import com.cocos.portfolio_service.instrument.infrastructure.persistence.InstrumentJpaRepository;
 import com.cocos.portfolio_service.marketdata.infrastructure.persistence.MarketDataJpaRepository;
 import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
 import com.cocos.portfolio_service.order.infrastructure.persistence.OrderJpaRepository;
@@ -46,11 +45,11 @@ class DomainJpaRepositoryTest {
         // ARRANGE
 
         // ACT
-        var userExists = users.existsById(1);
+        var userExists = users.existsById(1L);
         var instrumentPage = instruments.findByTickerContainingIgnoreCaseOrNameContainingIgnoreCase(
                 "gal", "gal", org.springframework.data.domain.PageRequest.of(0, 10));
-        var latestPrice = marketData.findFirstByInstrumentIdOrderByDateDescIdDesc(1).orElseThrow();
-        var filledOrders = orders.findByUserIdAndStatus(1, OrderStatus.FILLED);
+        var latestPrice = marketData.findFirstByInstrumentIdOrderByDateDescIdDesc(1L).orElseThrow();
+        var filledOrders = orders.findByUserId(1L, OrderStatus.FILLED);
 
         // ASSERT
         assertTrue(userExists);

@@ -49,7 +49,7 @@ class OrderServiceTest {
                 new Instrument(3L, "GGAL", "Grupo Galicia", "ACCIONES", null)));
         lenient().when(marketDataRepository.findLatestByInstrumentId(3L)).thenReturn(Optional.of(
                 new MarketData(1L, 3L, new BigDecimal("100.00"), new BigDecimal("95.00"), LocalDate.now())));
-        lenient().when(orderRepository.findByUserIdAndStatus(7L, OrderStatus.FILLED)).thenReturn(List.of(
+        lenient().when(orderRepository.findByUserId(7L, OrderStatus.FILLED)).thenReturn(List.of(
                 new Order(1L, 7L, 65L, OrderSide.CASH_IN, 1000L, BigDecimal.ONE,
                         OrderType.MARKET, OrderStatus.FILLED, Instant.EPOCH)));
         lenient().when(orderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -137,7 +137,7 @@ class OrderServiceTest {
     @Test
     void whenSellExactlyMatchesAvailableHoldings_thenSubmit_savesFilledOrder() {
         // ARRANGE
-        when(orderRepository.findByUserIdAndStatus(7L, OrderStatus.FILLED)).thenReturn(List.of(
+        when(orderRepository.findByUserId(7L, OrderStatus.FILLED)).thenReturn(List.of(
                 new Order(1L, 7L, 65L, OrderSide.CASH_IN, 1000L, BigDecimal.ONE,
                         OrderType.MARKET, OrderStatus.FILLED, Instant.EPOCH),
                 new Order(2L, 7L, 3L, OrderSide.BUY, 1L, new BigDecimal("80.00"),

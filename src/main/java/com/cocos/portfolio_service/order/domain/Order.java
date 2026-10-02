@@ -3,18 +3,17 @@ package com.cocos.portfolio_service.order.domain;
 import com.cocos.portfolio_service.order.domain.enums.OrderSide;
 import com.cocos.portfolio_service.order.domain.enums.OrderType;
 import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
-
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 public record Order(
         Long id,
         Long userId,
         Long instrumentId,
         OrderSide side,
-        Long quantity,
+        Long size,
         BigDecimal price,
         OrderType type,
         OrderStatus status,
-        Instant datetime) {
+        LocalDateTime datetime) {
 }

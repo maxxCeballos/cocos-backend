@@ -6,28 +6,26 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "marketdata")
+@Getter
 public class MarketDataEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
+
     @Column(name = "instrumentid")
-    private Integer instrumentId;
+    private Long instrumentId;
+
     @Column(precision = 10, scale = 2)
     private BigDecimal close;
+
     @Column(name = "previousclose", precision = 10, scale = 2)
     private BigDecimal previousClose;
+
     private LocalDate date;
-
-    protected MarketDataEntity() {}
-
-    public Integer getId() { return id; }
-    public Integer getInstrumentId() { return instrumentId; }
-    public BigDecimal getClose() { return close; }
-    public BigDecimal getPreviousClose() { return previousClose; }
-    public LocalDate getDate() { return date; }
 }

@@ -7,6 +7,7 @@ import com.cocos.portfolio_service.order.domain.OrderToSubmit;
 import com.cocos.portfolio_service.order.domain.enums.OrderSide;
 import com.cocos.portfolio_service.order.domain.enums.OrderType;
 import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
+import com.cocos.portfolio_service.order.utils.mappers.OrderMapper;
 import com.cocos.portfolio_service.shared.api.GlobalExceptionHandler;
 import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
 import org.junit.jupiter.api.Test;

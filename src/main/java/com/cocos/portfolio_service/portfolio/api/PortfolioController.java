@@ -29,7 +29,6 @@ class PortfolioController {
     }
 
     @GetMapping("/users/{userId}")
-    @Operation(summary = "Get a user's portfolio", description = "Returns account totals and holdings for the specified user.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Portfolio returned successfully",
                     content = @Content(schema = @Schema(implementation = PortfolioResponse.class))),

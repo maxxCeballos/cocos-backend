@@ -1,6 +1,7 @@
 package com.cocos.portfolio_service.instrument.api;
 
 import com.cocos.portfolio_service.instrument.application.IInstrument;
+import com.cocos.portfolio_service.instrument.utils.mappers.InstrumentMapper;
 import com.cocos.portfolio_service.shared.api.PageResponse;
 import com.cocos.portfolio_service.shared.api.ApiErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;

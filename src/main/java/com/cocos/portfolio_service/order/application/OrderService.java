@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Instant;
 
 @Service
 class OrderService implements IOrderService {
@@ -45,7 +44,7 @@ class OrderService implements IOrderService {
         instrumentRepository.findById(command.instrumentId())
                 .orElseThrow(() -> new InstrumentNotFoundException(command.instrumentId()));
         if ((command.quantity() == null) == (command.amount() == null)) {
-            throw new InvalidOrderException("Provide exactly one of quantity or amount");
+            throw new InvalidOrderException("Provide exactly one of size or amount");
         }
         if (command.side() == OrderSide.CASH_IN || command.side() == OrderSide.CASH_OUT) {
             throw new InvalidOrderException("Cash transfer orders cannot be submitted through this endpoint");
@@ -85,15 +84,15 @@ class OrderService implements IOrderService {
         long heldQuantity = 0;
         for (var order : filledOrders) {
             switch (order.side()) {
-                case CASH_IN -> cash = cash.add(BigDecimal.valueOf(order.quantity()));
-                case CASH_OUT -> cash = cash.subtract(BigDecimal.valueOf(order.quantity()));
+                case CASH_IN -> cash = cash.add(BigDecimal.valueOf(order.size()));
+                case CASH_OUT -> cash = cash.subtract(BigDecimal.valueOf(order.size()));
                 case BUY -> {
-                    cash = cash.subtract(order.price().multiply(BigDecimal.valueOf(order.quantity())));
-                    if (order.instrumentId().equals(command.instrumentId())) heldQuantity += order.quantity();
+                    cash = cash.subtract(order.price().multiply(BigDecimal.valueOf(order.size())));
+                    if (order.instrumentId().equals(command.instrumentId())) heldQuantity += order.size();
                 }
                 case SELL -> {
-                    cash = cash.add(order.price().multiply(BigDecimal.valueOf(order.quantity())));
-                    if (order.instrumentId().equals(command.instrumentId())) heldQuantity -= order.quantity();
+                    cash = cash.add(order.price().multiply(BigDecimal.valueOf(order.size())));
+                    if (order.instrumentId().equals(command.instrumentId())) heldQuantity -= order.size();
                 }
             }
         }
@@ -109,7 +108,7 @@ class OrderService implements IOrderService {
         var status = rejected ? OrderStatus.REJECTED
                 : command.type() == OrderType.MARKET ? OrderStatus.FILLED : OrderStatus.NEW;
         var order = new Order(null, command.userId(), command.instrumentId(), command.side(), quantity,
-                executionPrice, command.type(), status, Instant.now());
+                executionPrice, command.type(), status, null);
         return orderRepository.save(order);
     }
 }
