@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -61,7 +62,7 @@ class PortfolioService implements IPortfolioService {
         BigDecimal totalStockShareValue = BigDecimal.ZERO;
 
         List<Order> ordersToCalculate = orders.stream().filter(order -> order.toShareSwapped() || order.toCashSwapped()).toList();
-        Map<Long, MarketData> instrumentToMarketdataMap = marketsData.stream().collect(Collectors.toMap(MarketData::instrumentId, Function.identity()));
+        Map<Long, MarketData> instrumentToMarketdataMap = getLastInstrumentMarketData(marketsData);
 
         Map<Long, Long> instrumentToCantMap = calculateInstrumentCantMap(ordersToCalculate);
 
@@ -98,7 +99,7 @@ class PortfolioService implements IPortfolioService {
         ArrayList<Portfolio.Instrument> instrumentInfoAggregated = new ArrayList<>();
 
         List<Order> ordersToCalculate = orders.stream().filter(order -> order.status().equals(OrderStatus.FILLED) && !List.of(OrderSide.CASH_IN, OrderSide.CASH_OUT).contains(order.side())).toList();
-        Map<Long, MarketData> instrumentToMarketdataMap = marketsData.stream().collect(Collectors.toMap(MarketData::instrumentId, Function.identity()));
+        Map<Long, MarketData> instrumentToMarketdataMap = getLastInstrumentMarketData(marketsData);
         Map<Long, Instrument> instrumentsMap = instruments.stream().collect(Collectors.toMap(Instrument::id, Function.identity()));
 
         Map<Long, Long> instrumentToCantMap = calculateInstrumentCantMap(ordersToCalculate);
@@ -119,39 +120,16 @@ class PortfolioService implements IPortfolioService {
                     instrument.name(),
                     size,
                     marketData.close().multiply(BigDecimal.valueOf(size)),
-                    BigDecimal.ZERO
+                    calculateTotalReturn(marketsData)
             ));
         }
 
         return instrumentInfoAggregated;
     }
 
-    public static BigDecimal calculateSimplifiedReturn(List<MarketData> historicData, BigDecimal currentQuantity) {
-        if (historicData == null || historicData.isEmpty() || currentQuantity == null) {
-            return BigDecimal.ZERO;
-        }
-
-        // 1. Sumatoria de todos los rendimientos diarios: ((close - previousClose) / previousClose)
-        BigDecimal sumOfDailyReturns = historicData.stream()
-                .map(row -> {
-                    BigDecimal close = row.close();
-                    BigDecimal prevClose = row.previousClose();
-
-                    // Validación de seguridad para evitar división por cero
-                    if (prevClose == null || prevClose.compareTo(BigDecimal.ZERO) == 0 || close == null) {
-                        return BigDecimal.ZERO;
-                    }
-
-                    // (close - previousClose)
-                    BigDecimal dailyChange = close.subtract(prevClose);
-
-                    // Dividido previousClose
-                    return dailyChange.divide(prevClose);
-                })
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        // 2. Multiplicamos la suma de rendimientos por la cantidad actual de instrumentos
-        return sumOfDailyReturns.multiply(currentQuantity);
+    public static BigDecimal calculateTotalReturn(List<MarketData> historicMarketData) {
+        // TODO: implement this
+        return BigDecimal.ZERO;
     }
 
     private Map<Long, Long> calculateInstrumentCantMap(List<Order> ordersToEvaluate) {
@@ -168,5 +146,12 @@ class PortfolioService implements IPortfolioService {
             }
         }
         return instrumentCantMap;
+    }
+
+    private Map<Long, MarketData> getLastInstrumentMarketData(List<MarketData> marketsData) {
+        return marketsData.stream().collect(Collectors.toMap(
+                MarketData::instrumentId, entity -> entity,
+                BinaryOperator.maxBy(Comparator.comparing(MarketData::date))
+        ));
     }
 }

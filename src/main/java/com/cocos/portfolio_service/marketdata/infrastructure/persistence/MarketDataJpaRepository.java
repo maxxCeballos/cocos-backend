@@ -9,8 +9,11 @@ import java.util.Optional;
 public interface MarketDataJpaRepository extends JpaRepository<MarketDataEntity, Long> {
     Optional<MarketDataEntity> findByInstrumentId(Long instrumentId);
 
-    @Query("SELECT m FROM MarketDataEntity m " +
-            "WHERE m.instrumentId IN :instrumentIds " +
-            "AND m.date = (SELECT MAX(sub.date) FROM MarketDataEntity sub WHERE sub.instrumentId = m.instrumentId)")
+    @Query(
+        """
+            SELECT m
+            FROM MarketDataEntity m
+            WHERE m.instrumentId IN :instrumentIds
+        """)
     List<MarketDataEntity> findCurrentMarketDataByInstrumentId(List<Long> instrumentIds);
 }
