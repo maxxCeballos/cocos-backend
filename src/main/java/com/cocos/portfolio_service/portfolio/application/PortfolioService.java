@@ -48,62 +48,42 @@ class PortfolioService implements IPortfolioService {
 
         // TODO: make this methods calls concurrent
         BigDecimal availableCash = calculateAvailableCash(orders);
-        BigDecimal stockMarketValue = calculateOrdersFilledValue(orders, marketsData);
-        BigDecimal ordersPendingValue = calculateOrdersPendingValue(orders, marketsData);
-        BigDecimal totalAccountValue = availableCash.add(stockMarketValue).add(ordersPendingValue);
+        BigDecimal totalStockShareValue = calculateTotalStockShareValue(orders, marketsData);
+        BigDecimal totalAccountValue = availableCash.add(totalStockShareValue);
+
         List<Portfolio.Instrument> instrumentInfoAggregated = aggregateInstrumentInfo(orders, marketsData, instruments);
 
-        return new Portfolio(userOpt.get().accountNumber(), "AR$", totalAccountValue, availableCash, instrumentInfoAggregated);
+        return new Portfolio("AR$", totalAccountValue, availableCash, totalStockShareValue, instrumentInfoAggregated);
     }
 
-    private BigDecimal calculateOrdersPendingValue(List<Order> orders, List<MarketData> marketsData) {
-        BigDecimal ordersPendigValue = BigDecimal.ZERO;
+    // STOCK SHARE: ✅
+    private BigDecimal calculateTotalStockShareValue(List<Order> orders, List<MarketData> marketsData) {
+        BigDecimal totalStockShareValue = BigDecimal.ZERO;
 
-        List<Order> ordersToEvaluate = orders.stream().filter(order -> order.status().equals(OrderStatus.NEW) && !List.of(OrderSide.CASH_IN, OrderSide.CASH_OUT).contains(order.side())).toList();
-        Map<Long, MarketData> instrumentMarketdataMap = marketsData.stream().collect(Collectors.toMap(MarketData::instrumentId, Function.identity()));
+        List<Order> ordersToCalculate = orders.stream().filter(order -> order.toShareSwapped() || order.toCashSwapped()).toList();
+        Map<Long, MarketData> instrumentToMarketdataMap = marketsData.stream().collect(Collectors.toMap(MarketData::instrumentId, Function.identity()));
 
-        for(Order order: ordersToEvaluate) {
-            if(order.side() == OrderSide.BUY) {
-                BigDecimal totalOrder = order.price().multiply(BigDecimal.valueOf(order.size()));
-                ordersPendigValue = ordersPendigValue.add(totalOrder);
-            }
+        Map<Long, Long> instrumentToCantMap = calculateInstrumentCantMap(ordersToCalculate);
 
-            if(order.side() == OrderSide.SELL) {
-                MarketData instMarketdata = instrumentMarketdataMap.get(order.instrumentId());
-                BigDecimal totalOrder = instMarketdata.close().multiply(BigDecimal.valueOf(order.size()));
-                ordersPendigValue = ordersPendigValue.add(totalOrder);
-            }
+        for (Map.Entry<Long, Long> instrumentCant : instrumentToCantMap.entrySet()) {
+            MarketData instMarketdata = instrumentToMarketdataMap.get(instrumentCant.getKey());
+            BigDecimal totalInstrumentValue = instMarketdata.close().multiply(BigDecimal.valueOf(instrumentCant.getValue()));
+            totalStockShareValue = totalStockShareValue.add(totalInstrumentValue);
         }
 
-        return ordersPendigValue;
+        return totalStockShareValue;
     }
 
-    private BigDecimal calculateOrdersFilledValue(List<Order> orders, List<MarketData> marketsData) {
-        BigDecimal ordersFilledValue = BigDecimal.ZERO;
-
-        List<Order> ordersToEvaluate = orders.stream().filter(order -> order.status().equals(OrderStatus.FILLED) && !List.of(OrderSide.CASH_IN, OrderSide.CASH_OUT).contains(order.side())).toList();
-        Map<Long, MarketData> instrumentMarketdataMap = marketsData.stream().collect(Collectors.toMap(MarketData::instrumentId, Function.identity()));
-
-        Map<Long, Long> instrumentCantMap = calculateInstrumentCantMap(ordersToEvaluate);
-
-        for (Map.Entry<Long, Long> entry : instrumentCantMap.entrySet()) {
-            MarketData instMarketdata = instrumentMarketdataMap.get(entry.getKey());
-            BigDecimal totalOrder = instMarketdata.close().multiply(BigDecimal.valueOf(entry.getValue()));
-            ordersFilledValue = ordersFilledValue.add(totalOrder);
-        }
-
-        return ordersFilledValue;
-    }
-
+    // CASH: ✅
     private BigDecimal calculateAvailableCash(List<Order> orders) {
         BigDecimal cash = BigDecimal.ZERO;
 
-        List<Order> ordersToCompute = orders.stream().filter(order -> !order.isShareOnHold()).toList();
+        List<Order> ordersToCalculate = orders.stream().filter(order -> !order.isShareOnHold()).toList();
 
-        for (Order order: ordersToCompute) {
-            BigDecimal valueToOperate = order.price().multiply(BigDecimal.valueOf(order.size()));
+        for (Order order: ordersToCalculate) {
+            BigDecimal valueToOperate = order.orderValue();
 
-            if(order.side() == OrderSide.CASH_IN || order.swapToCash() || order.isCashOnHold()) {
+            if(order.isCashIn() || order.toCashSwapped() || order.isCashOnHold()) {
                 cash = cash.add(valueToOperate);
                 continue;
             }
@@ -117,20 +97,21 @@ class PortfolioService implements IPortfolioService {
     private List<Portfolio.Instrument> aggregateInstrumentInfo(List<Order> orders, List<MarketData> marketsData, List<Instrument> instruments) {
         ArrayList<Portfolio.Instrument> instrumentInfoAggregated = new ArrayList<>();
 
-        List<Order> ordersToEvaluate = orders.stream().filter(order -> order.status().equals(OrderStatus.FILLED) && !List.of(OrderSide.CASH_IN, OrderSide.CASH_OUT).contains(order.side())).toList();
-        Map<Long, MarketData> instrumentMarketdataMap = marketsData.stream().collect(Collectors.toMap(MarketData::instrumentId, Function.identity()));
+        List<Order> ordersToCalculate = orders.stream().filter(order -> order.status().equals(OrderStatus.FILLED) && !List.of(OrderSide.CASH_IN, OrderSide.CASH_OUT).contains(order.side())).toList();
+        Map<Long, MarketData> instrumentToMarketdataMap = marketsData.stream().collect(Collectors.toMap(MarketData::instrumentId, Function.identity()));
         Map<Long, Instrument> instrumentsMap = instruments.stream().collect(Collectors.toMap(Instrument::id, Function.identity()));
 
-        Map<Long, Long> instrumentCantMap = calculateInstrumentCantMap(ordersToEvaluate);
-        Set<Long> instrumentIds = ordersToEvaluate.stream()
+        Map<Long, Long> instrumentToCantMap = calculateInstrumentCantMap(ordersToCalculate);
+
+        Set<Long> instrumentIds = ordersToCalculate.stream()
                 .map(Order::instrumentId)
                 .collect(Collectors.toSet());
 
 
         for(Long instrumentId: instrumentIds) {
             Instrument instrument = instrumentsMap.get(instrumentId);
-            MarketData marketData = instrumentMarketdataMap.get(instrumentId);
-            Long size = instrumentCantMap.get(instrumentId);
+            MarketData marketData = instrumentToMarketdataMap.get(instrumentId);
+            Long size = instrumentToCantMap.get(instrumentId);
 
             instrumentInfoAggregated.add(new Portfolio.Instrument(
                     instrumentId,
@@ -145,16 +126,44 @@ class PortfolioService implements IPortfolioService {
         return instrumentInfoAggregated;
     }
 
+    public static BigDecimal calculateSimplifiedReturn(List<MarketData> historicData, BigDecimal currentQuantity) {
+        if (historicData == null || historicData.isEmpty() || currentQuantity == null) {
+            return BigDecimal.ZERO;
+        }
+
+        // 1. Sumatoria de todos los rendimientos diarios: ((close - previousClose) / previousClose)
+        BigDecimal sumOfDailyReturns = historicData.stream()
+                .map(row -> {
+                    BigDecimal close = row.close();
+                    BigDecimal prevClose = row.previousClose();
+
+                    // Validación de seguridad para evitar división por cero
+                    if (prevClose == null || prevClose.compareTo(BigDecimal.ZERO) == 0 || close == null) {
+                        return BigDecimal.ZERO;
+                    }
+
+                    // (close - previousClose)
+                    BigDecimal dailyChange = close.subtract(prevClose);
+
+                    // Dividido previousClose
+                    return dailyChange.divide(prevClose);
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // 2. Multiplicamos la suma de rendimientos por la cantidad actual de instrumentos
+        return sumOfDailyReturns.multiply(currentQuantity);
+    }
+
     private Map<Long, Long> calculateInstrumentCantMap(List<Order> ordersToEvaluate) {
         Map<Long, Long> instrumentCantMap = new HashMap<>();
 
         for (Order order: ordersToEvaluate) {
             if(!instrumentCantMap.containsKey(order.instrumentId())) {
-                Long firstCant = order.side() == OrderSide.BUY ? order.size() : -order.size();
+                Long firstCant = order.isShare() ? order.size() : -order.size();
                 instrumentCantMap.put(order.instrumentId(), firstCant);
             } else {
                 Long valueToModify = instrumentCantMap.get(order.instrumentId());
-                valueToModify = order.side() == OrderSide.BUY ? (valueToModify + order.size()) : (valueToModify - order.size());
+                valueToModify = order.isShare() ? (valueToModify + order.size()) : (valueToModify - order.size());
                 instrumentCantMap.put(order.instrumentId(), valueToModify);
             }
         }

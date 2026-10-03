@@ -4,10 +4,10 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public record PortfolioResponse(
-        String userAccountNumber,
         String currency,
         BigDecimal totalAccountValue,
         BigDecimal availableCash,
+        BigDecimal stockShareValue,
         List<InstrumentResponse> instruments) {
 
     public record InstrumentResponse(

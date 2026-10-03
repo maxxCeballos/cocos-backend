@@ -17,15 +17,31 @@ public record Order(
         OrderStatus status,
         LocalDateTime datetime) {
 
+    public boolean isCashIn() {
+        return this.side == OrderSide.CASH_IN;
+    }
+
+    public boolean toCashSwapped() {
+        return this.side.equals(OrderSide.SELL) && this.status.equals(OrderStatus.FILLED);
+    }
+
     public boolean isCashOnHold() {
-        return this.side().equals(OrderSide.BUY) && this.status().equals(OrderStatus.NEW);
+        return this.side.equals(OrderSide.BUY) && this.status.equals(OrderStatus.NEW);
+    }
+
+    public boolean toShareSwapped() {
+        return this.side.equals(OrderSide.BUY) && this.status.equals(OrderStatus.FILLED);
     }
 
     public boolean isShareOnHold() {
-        return this.side().equals(OrderSide.SELL) && this.status().equals(OrderStatus.NEW);
+        return this.side.equals(OrderSide.SELL) && this.status.equals(OrderStatus.NEW);
     }
 
-    public boolean swapToCash() {
-        return this.side().equals(OrderSide.SELL) && this.status().equals(OrderStatus.FILLED);
+    public boolean isShare() {
+        return this.toShareSwapped() || this.isShareOnHold();
+    }
+
+    public BigDecimal orderValue() {
+        return this.price.multiply(BigDecimal.valueOf(this.size));
     }
 }
