@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RestController
 @RequestMapping("/api/instruments")
-@Tag(name = "Instruments", description = "Instrument search")
 class InstrumentController {
     private final IInstrument instrumentSearch;
     private final InstrumentMapper instrumentMapper;
@@ -32,8 +31,7 @@ class InstrumentController {
         this.instrumentMapper = instrumentMapper;
     }
 
-    @GetMapping
-    @Operation(summary = "Search instruments", description = "Searches instruments by query and returns a page of results.")
+    @GetMapping("/search")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Search results returned successfully"),
             @ApiResponse(responseCode = "400", description = "Query must not be blank; page must be non-negative; size must be between 1 and 100",

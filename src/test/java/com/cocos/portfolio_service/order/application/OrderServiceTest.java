@@ -22,8 +22,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -49,9 +49,9 @@ class OrderServiceTest {
                 new Instrument(3L, "GGAL", "Grupo Galicia", "ACCIONES", null)));
         lenient().when(marketDataRepository.findLatestByInstrumentId(3L)).thenReturn(Optional.of(
                 new MarketData(1L, 3L, new BigDecimal("100.00"), new BigDecimal("95.00"), LocalDate.now())));
-        lenient().when(orderRepository.findEffectiveOrdersByUserId(7L, OrderStatus.FILLED)).thenReturn(List.of(
+        lenient().when(orderRepository.findEffectiveOrdersByUserId(7L)).thenReturn(List.of(
                 new Order(1L, 7L, 65L, OrderSide.CASH_IN, 1000L, BigDecimal.ONE,
-                        OrderType.MARKET, OrderStatus.FILLED, Instant.EPOCH)));
+                        OrderType.MARKET, OrderStatus.FILLED, LocalDateTime.of(2023, 7, 13, 12, 0))));
         lenient().when(orderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
@@ -64,7 +64,7 @@ class OrderServiceTest {
         var result = orderService.submit(command);
 
         // ASSERT
-        assertEquals(2L, result.quantity());
+        assertEquals(2L, result.size());
         assertEquals(new BigDecimal("100.00"), result.price());
         assertEquals(OrderStatus.FILLED, result.status());
         verify(orderRepository).save(any(Order.class));
@@ -92,7 +92,7 @@ class OrderServiceTest {
         var result = orderService.submit(command);
 
         // ASSERT
-        assertEquals(2L, result.quantity());
+        assertEquals(2L, result.size());
         assertEquals(OrderStatus.FILLED, result.status());
     }
 
@@ -106,7 +106,7 @@ class OrderServiceTest {
 
         // ASSERT
         assertEquals(OrderStatus.REJECTED, result.status());
-        assertEquals(11L, result.quantity());
+        assertEquals(11L, result.size());
     }
 
     @Test
@@ -119,7 +119,7 @@ class OrderServiceTest {
 
         // ASSERT
         assertEquals(OrderStatus.FILLED, result.status());
-        assertEquals(10L, result.quantity());
+        assertEquals(10L, result.size());
     }
 
     @Test
@@ -137,11 +137,11 @@ class OrderServiceTest {
     @Test
     void whenSellExactlyMatchesAvailableHoldings_thenSubmit_savesFilledOrder() {
         // ARRANGE
-        when(orderRepository.findEffectiveOrdersByUserId(7L, OrderStatus.FILLED)).thenReturn(List.of(
+        when(orderRepository.findEffectiveOrdersByUserId(7L)).thenReturn(List.of(
                 new Order(1L, 7L, 65L, OrderSide.CASH_IN, 1000L, BigDecimal.ONE,
-                        OrderType.MARKET, OrderStatus.FILLED, Instant.EPOCH),
+                        OrderType.MARKET, OrderStatus.FILLED, LocalDateTime.of(2023, 7, 13, 12, 0)),
                 new Order(2L, 7L, 3L, OrderSide.BUY, 1L, new BigDecimal("80.00"),
-                        OrderType.MARKET, OrderStatus.FILLED, Instant.EPOCH)));
+                        OrderType.MARKET, OrderStatus.FILLED, LocalDateTime.of(2023, 7, 13, 12, 0))));
         var command = command(OrderSide.SELL, OrderType.MARKET, 1L, null, null);
 
         // ACT
@@ -149,7 +149,7 @@ class OrderServiceTest {
 
         // ASSERT
         assertEquals(OrderStatus.FILLED, result.status());
-        assertEquals(1L, result.quantity());
+        assertEquals(1L, result.size());
     }
 
     @Test

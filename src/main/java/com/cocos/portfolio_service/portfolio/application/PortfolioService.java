@@ -15,8 +15,6 @@ import com.cocos.portfolio_service.user.domain.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
-import java.math.RoundingMode;
 import java.util.*;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
@@ -28,13 +26,16 @@ class PortfolioService implements IPortfolioService {
     private final OrderRepository orderRepository;
     private final InstrumentRepository instrumentRepository;
     private final MarketDataRepository marketDataRepository;
+    private final ReturnService returnService;
 
     PortfolioService(UserRepository userRepository, OrderRepository orderRepository,
-                     InstrumentRepository instrumentRepository, MarketDataRepository marketDataRepository) {
+                     InstrumentRepository instrumentRepository, MarketDataRepository marketDataRepository,
+                     ReturnService returnService) {
         this.userRepository = userRepository;
         this.orderRepository = orderRepository;
         this.instrumentRepository = instrumentRepository;
         this.marketDataRepository = marketDataRepository;
+        this.returnService = returnService;
     }
 
     public Portfolio getPortfolio(Long userId) {
@@ -117,7 +118,6 @@ class PortfolioService implements IPortfolioService {
             Long size = instrumentToCantMap.get(instrumentId);
             List<MarketData> instrumentMarketData = marketsData.stream()
                     .filter(data -> Objects.equals(data.instrumentId(), instrumentId))
-                    .sorted(Comparator.comparing(MarketData::date))
                     .toList();
             List<Order> instrumentOrders = ordersToCalculate.stream()
                     .filter(order -> Objects.equals(order.instrumentId(), instrumentId))
@@ -129,49 +129,11 @@ class PortfolioService implements IPortfolioService {
                     instrument.name(),
                     size,
                     marketData.close().multiply(BigDecimal.valueOf(size)),
-                    calculatePositionReturn(instrumentMarketData, instrumentOrders)
+                    returnService.calculateDailyPositionReturn(instrumentMarketData, instrumentOrders)
             ));
         }
 
         return instrumentInfoAggregated;
-    }
-
-    public static BigDecimal calculatePositionReturn(List<MarketData> instrumentMarketData,
-                                                     List<Order> filledInstrumentOrders) {
-        if (instrumentMarketData == null || instrumentMarketData.isEmpty()
-                || filledInstrumentOrders == null || filledInstrumentOrders.isEmpty()) {
-            return BigDecimal.ZERO.setScale(4);
-        }
-
-        BigDecimal totalBuyAmount = BigDecimal.ZERO;
-        BigDecimal totalSellAmount = BigDecimal.ZERO;
-        long currentQuantity = 0;
-
-        for (Order order : filledInstrumentOrders) {
-            if (order.status() != OrderStatus.FILLED) continue;
-
-            if (order.side() == OrderSide.BUY) {
-                totalBuyAmount = totalBuyAmount.add(order.orderValue());
-                currentQuantity += order.size();
-            } else if (order.side() == OrderSide.SELL) {
-                totalSellAmount = totalSellAmount.add(order.orderValue());
-                currentQuantity -= order.size();
-            }
-        }
-
-        if (totalBuyAmount.signum() == 0) return BigDecimal.ZERO.setScale(4);
-
-        MarketData latestMarketData = instrumentMarketData.stream()
-                .max(Comparator.comparing(MarketData::date))
-                .orElse(null);
-        if (latestMarketData == null || latestMarketData.close() == null) return BigDecimal.ZERO.setScale(4);
-
-        BigDecimal currentMarketValue = latestMarketData.close().multiply(BigDecimal.valueOf(currentQuantity));
-        BigDecimal profitAndLoss = currentMarketValue.add(totalSellAmount).subtract(totalBuyAmount);
-
-        return profitAndLoss.divide(totalBuyAmount, MathContext.DECIMAL128)
-                .multiply(BigDecimal.valueOf(100))
-                .setScale(4, RoundingMode.HALF_UP);
     }
 
     private Map<Long, Long> calculateInstrumentCantMap(List<Order> ordersToEvaluate) {

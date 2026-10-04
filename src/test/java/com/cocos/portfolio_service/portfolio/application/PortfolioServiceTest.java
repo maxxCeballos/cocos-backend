@@ -11,6 +11,7 @@ import com.cocos.portfolio_service.order.domain.enums.OrderSide;
 import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
 import com.cocos.portfolio_service.order.domain.enums.OrderType;
 import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
+import com.cocos.portfolio_service.user.domain.User;
 import com.cocos.portfolio_service.user.domain.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,13 +20,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,12 +36,13 @@ class PortfolioServiceTest {
     @Mock private OrderRepository orderRepository;
     @Mock private InstrumentRepository instrumentRepository;
     @Mock private MarketDataRepository marketDataRepository;
+    @Mock private ReturnService returnService;
     @InjectMocks private PortfolioService portfolioService;
 
     @Test
     void whenUserDoesNotExist_thenGetPortfolio_throwsUserNotFound() {
         // ARRANGE
-        when(userRepository.existsById(7L)).thenReturn(false);
+        when(userRepository.findById(7L)).thenReturn(Optional.empty());
 
         // ACT & ASSERT
         assertThrows(UserNotFoundException.class, () -> portfolioService.getPortfolio(7L));
@@ -48,8 +51,8 @@ class PortfolioServiceTest {
     @Test
     void whenUserHasNoFilledOrders_thenGetPortfolio_returnsEmptyZeroBalance() {
         // ARRANGE
-        when(userRepository.existsById(7L)).thenReturn(true);
-        when(orderRepository.findEffectiveOrdersByUserId(7L, OrderStatus.FILLED)).thenReturn(List.of());
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user()));
+        when(orderRepository.findEffectiveOrdersByUserId(7L)).thenReturn(List.of());
 
         // ACT
         var result = portfolioService.getPortfolio(7L);
@@ -63,8 +66,8 @@ class PortfolioServiceTest {
     @Test
     void whenUserHasOnlyCashMovements_thenGetPortfolio_returnsCashOnlyAccount() {
         // ARRANGE
-        when(userRepository.existsById(7L)).thenReturn(true);
-        when(orderRepository.findEffectiveOrdersByUserId(7L, OrderStatus.FILLED)).thenReturn(List.of(
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user()));
+        when(orderRepository.findEffectiveOrdersByUserId(7L)).thenReturn(List.of(
                 order(OrderSide.CASH_IN, 500L, 65L, "1.00"),
                 order(OrderSide.CASH_OUT, 125L, 65L, "1.00")));
 
@@ -80,15 +83,16 @@ class PortfolioServiceTest {
     @Test
     void whenUserHasBuyAndSellMovements_thenGetPortfolio_calculatesCashHoldingsAndDailyReturn() {
         // ARRANGE
-        when(userRepository.existsById(7L)).thenReturn(true);
-        when(orderRepository.findEffectiveOrdersByUserId(7L, OrderStatus.FILLED)).thenReturn(List.of(
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user()));
+        when(orderRepository.findEffectiveOrdersByUserId(7L)).thenReturn(List.of(
                 order(OrderSide.CASH_IN, 1000L, 65L, "1.00"),
                 order(OrderSide.BUY, 2L, 3L, "100.00"),
                 order(OrderSide.SELL, 1L, 3L, "150.00")));
-        when(instrumentRepository.findById(3L)).thenReturn(Optional.of(
-                new Instrument(3L, "GGAL", "Grupo Galicia", "ACCIONES", null)));
-        when(marketDataRepository.findLatestByInstrumentId(3L)).thenReturn(Optional.of(
+        when(instrumentRepository.findAllById(anyList())).thenReturn(List.of(instrument()));
+        when(marketDataRepository.findAllById(anyList())).thenReturn(List.of(
                 new MarketData(1L, 3L, new BigDecimal("120.00"), new BigDecimal("100.00"), LocalDate.now())));
+        when(returnService.calculateDailyPositionReturn(anyList(), anyList()))
+                .thenReturn(new BigDecimal("20.0000"));
 
         // ACT
         var result = portfolioService.getPortfolio(7L);
@@ -105,12 +109,11 @@ class PortfolioServiceTest {
     @Test
     void whenHoldingHasNoMarketData_thenGetPortfolio_throwsMarketDataNotFound() {
         // ARRANGE
-        when(userRepository.existsById(7L)).thenReturn(true);
-        when(orderRepository.findEffectiveOrdersByUserId(7L, OrderStatus.FILLED))
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user()));
+        when(orderRepository.findEffectiveOrdersByUserId(7L))
                 .thenReturn(List.of(order(OrderSide.BUY, 2L, 3L, "100.00")));
-        when(instrumentRepository.findById(3L)).thenReturn(Optional.of(
-                new Instrument(3L, "GGAL", "Grupo Galicia", "ACCIONES", null)));
-        when(marketDataRepository.findLatestByInstrumentId(3L)).thenReturn(Optional.empty());
+        when(instrumentRepository.findAllById(anyList())).thenReturn(List.of(instrument()));
+        when(marketDataRepository.findAllById(anyList())).thenReturn(List.of());
 
         // ACT & ASSERT
         assertThrows(MarketDataNotFoundException.class, () -> portfolioService.getPortfolio(7L));
@@ -118,6 +121,14 @@ class PortfolioServiceTest {
 
     private Order order(OrderSide side, long quantity, long instrumentId, String price) {
         return new Order(1L, 7L, instrumentId, side, quantity, new BigDecimal(price), OrderType.MARKET,
-                OrderStatus.FILLED, Instant.EPOCH);
+                OrderStatus.FILLED, LocalDateTime.of(2023, 7, 13, 12, 0));
+    }
+
+    private User user() {
+        return new User(7L, "user@example.com", "account-7");
+    }
+
+    private Instrument instrument() {
+        return new Instrument(3L, "GGAL", "Grupo Galicia", "ACCIONES", null);
     }
 }

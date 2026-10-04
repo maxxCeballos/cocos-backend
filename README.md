@@ -25,20 +25,24 @@ totalAccountValue = availableCash + stockShareValue
 
 ### Instrument return calculation
 
-The API's `totalReturnPercent` field measures the return on an instrument position using filled buy and sell orders and the instrument's latest market close:
+The API's `totalReturnPercent` field measures position performance by accumulating daily profit and loss from market prices and filled trades. For each market quote, the daily market movement is valued against the position size at the start of that quote's date:
 
 ```text
-position size = sum(filled BUY sizes) - sum(filled SELL sizes)
-purchaseAmount = sum(filled BUY price × size)
-saleProceeds = sum(filled SELL price × size)
-currentMarketValue = position size × latest close
-profitAndLoss = currentMarketValue + saleProceeds - purchaseAmount
-totalReturnPercent = (profitAndLoss / purchaseAmount) × 100
+dailyMarketPnL = (close - previousClose) × opening position size
+
+BUY adjustment  = (close - execution price) × size
+SELL adjustment = (execution price - close) × size
+dailyPnL = dailyMarketPnL + sum(BUY and SELL adjustments)
+
+totalPnL = initial position value and pre-history trade cash flows
+         + sum(dailyPnL)
+purchaseAmount = sum(FILLED BUY price × size)
+totalReturnPercent = (totalPnL / purchaseAmount) × 100
 ```
 
-The percentage is rounded to four decimal places. If there is no market history, no latest close, or no purchase amount, the API returns `0.0000`. The calculation does not include fees, taxes, or dividends.
+Orders are matched to the first market quote on or after their date. Orders before the first quote initialize the position and its value from that quote's `previousClose`; orders after the last quote are valued against the last `close`. Only `FILLED` buy and sell orders are included. The percentage is rounded to four decimal places. If there is no valid market history or no filled buy amount, the API returns `0.0000`. The calculation does not include fees, taxes, or dividends.
 
-For example, buying 500 units at 250 and valuing them at the latest close of 229.50 gives a purchase amount of 125,000 and a current market value of 114,750. With no filled sales, the resulting return is `(114,750 - 125,000) / 125,000 × 100 = -8.2000%`.
+For example, buying 500 units at 250 and valuing them at the latest close of 229.50 gives a purchase amount of 125,000 and a current market value of 114,750. With no filled sales, the daily P&L accumulation results in `(114,750 - 125,000) / 125,000 × 100 = -8.2000%`.
 
 ## Run locally with Docker Compose
 
