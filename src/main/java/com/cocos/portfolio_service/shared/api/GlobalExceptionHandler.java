@@ -1,6 +1,7 @@
 package com.cocos.portfolio_service.shared.api;
 
 import com.cocos.portfolio_service.instrument.domain.errors.InstrumentNotFoundException;
+import com.cocos.portfolio_service.instrument.domain.errors.InvalidInstrumentSearchQueryException;
 import com.cocos.portfolio_service.marketdata.domain.errors.MarketDataNotFoundException;
 import com.cocos.portfolio_service.marketdata.domain.errors.InvalidMarketDataException;
 import com.cocos.portfolio_service.order.domain.errors.InvalidOrderException;
@@ -13,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -30,8 +33,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             MethodArgumentNotValidException.class,
+            MissingRequestHeaderException.class,
+            MethodArgumentTypeMismatchException.class,
             ConstraintViolationException.class,
             HttpMessageNotReadableException.class,
+            InvalidInstrumentSearchQueryException.class,
             InvalidOrderException.class,
             InvalidMarketDataException.class
     })

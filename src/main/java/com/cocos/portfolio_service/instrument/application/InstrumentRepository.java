@@ -9,6 +9,7 @@ import java.util.Optional;
 
 public interface InstrumentRepository {
     Page<Instrument> search(String query, Pageable pageable);
+    Page<Instrument> findAll(Pageable pageable);
     Optional<Instrument> findById(Long instrumentId);
     List<Instrument> findAllById(List<Long> instrumentIds);
 }

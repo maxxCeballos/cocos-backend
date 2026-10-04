@@ -27,6 +27,11 @@ public class InstrumentRepositoryAdapter implements InstrumentRepository {
     }
 
     @Override
+    public Page<Instrument> findAll(Pageable pageable) {
+        return instruments.findAll(pageable).map(this::toDomain);
+    }
+
+    @Override
     public Optional<Instrument> findById(Long instrumentId) {
         return instruments.findById(instrumentId).map(this::toDomain);
     }

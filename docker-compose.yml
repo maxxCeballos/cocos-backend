@@ -16,6 +16,17 @@ services:
       retries: 12
       start_period: 10s
 
+  valkey:
+    image: valkey/valkey:9.1.2-alpine
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+
   app:
     build:
       context: .
@@ -27,6 +38,8 @@ services:
       NEON_DB_URL: jdbc:postgresql://postgres:5432/portfolio
       NEON_DB_USERNAME: portfolio
       NEON_DB_PASSWORD: portfolio
+      SPRING_DATA_REDIS_HOST: valkey
+      SPRING_DATA_REDIS_PORT: 6379
     ports:
       - "8080:8080"
 

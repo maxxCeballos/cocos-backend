@@ -1,22 +1,103 @@
 package com.cocos.portfolio_service.instrument.application;
 
 import com.cocos.portfolio_service.instrument.domain.Instrument;
+import com.cocos.portfolio_service.instrument.domain.InstrumentSearchCacheEntry;
 import com.cocos.portfolio_service.instrument.domain.InstrumentSearchResult;
+import com.cocos.portfolio_service.instrument.domain.errors.InstrumentNotFoundException;
+import com.cocos.portfolio_service.instrument.domain.errors.InvalidInstrumentSearchQueryException;
+import com.cocos.portfolio_service.shared.infrastructure.cache.SharedListCache;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.dao.DataAccessException;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 class InstrumentService implements IInstrument {
-    private final InstrumentRepository instrumentRepository;
+    private static final Logger logger = LoggerFactory.getLogger(InstrumentService.class);
+    private static final String CACHE_KEY_PREFIX = "instrument:search:";
 
-    InstrumentService(InstrumentRepository instrumentRepository) {
+    private final InstrumentRepository instrumentRepository;
+    private final SharedListCache cache;
+    private final JsonMapper jsonMapper;
+
+    InstrumentService(InstrumentRepository instrumentRepository, SharedListCache cache, JsonMapper jsonMapper) {
         this.instrumentRepository = instrumentRepository;
+        this.cache = cache;
+        this.jsonMapper = jsonMapper;
     }
 
     @Override
-    public InstrumentSearchResult search(String query, int page, int size) {
-        var result = instrumentRepository.search(query.trim(), PageRequest.of(page, size));
+    public InstrumentSearchResult search(Long userId, Long instrumentId, String query, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        if (instrumentId != null) {
+            return searchById(userId, instrumentId, pageable);
+        }
+
+        if (query != null) {
+            if (query.isBlank()) {
+                throw new InvalidInstrumentSearchQueryException();
+            }
+            return toSearchResult(instrumentRepository.search(query.trim(), pageable));
+        }
+
+        return searchCachedInstruments(userId, pageable);
+    }
+
+    private InstrumentSearchResult searchById(Long userId, Long instrumentId, Pageable pageable) {
+        Instrument instrument = instrumentRepository.findById(instrumentId)
+                .orElseThrow(() -> new InstrumentNotFoundException(instrumentId));
+        String cacheKey = cacheKey(userId);
+        try {
+            String value = jsonMapper.writeValueAsString(InstrumentSearchCacheEntry.from(instrument));
+            cache.append(cacheKey, value);
+        } catch (DataAccessException | JacksonException exception) {
+            logger.warn("Valkey write failed for key {}; returning instrument from database", cacheKey, exception);
+        }
+
+        List<Instrument> content = pageable.getPageNumber() == 0 ? List.of(instrument) : List.of();
+        return new InstrumentSearchResult(content, pageable.getPageNumber(), pageable.getPageSize(), 1, 1);
+    }
+
+    private InstrumentSearchResult searchCachedInstruments(Long userId, Pageable pageable) {
+        String cacheKey = cacheKey(userId);
+        try {
+            Long cachedSize = cache.size(cacheKey);
+            long totalElements = cachedSize == null ? 0 : cachedSize;
+            long start = pageable.getOffset();
+            long end = start + pageable.getPageSize() - 1L;
+            List<Instrument> instruments = readCacheEntries(cache.range(cacheKey, start, end));
+            int totalPages = totalElements == 0 ? 0
+                    : (int) ((totalElements + pageable.getPageSize() - 1) / pageable.getPageSize());
+            return new InstrumentSearchResult(instruments, pageable.getPageNumber(), pageable.getPageSize(),
+                    totalElements, totalPages);
+        } catch (DataAccessException | JacksonException exception) {
+            logger.warn("Valkey read failed for key {}; falling back to the instrument database", cacheKey, exception);
+            return toSearchResult(instrumentRepository.findAll(pageable));
+        }
+    }
+
+    private List<Instrument> readCacheEntries(List<String> values) throws JacksonException {
+        List<Instrument> instruments = new ArrayList<>(values.size());
+        for (String value : values) {
+            instruments.add(jsonMapper.readValue(value, InstrumentSearchCacheEntry.class).toInstrument());
+        }
+        return instruments;
+    }
+
+    private InstrumentSearchResult toSearchResult(org.springframework.data.domain.Page<Instrument> result) {
         return new InstrumentSearchResult(result.getContent(), result.getNumber(), result.getSize(),
                 result.getTotalElements(), result.getTotalPages());
+    }
+
+    private String cacheKey(Long userId) {
+        return CACHE_KEY_PREFIX + userId;
     }
 }
