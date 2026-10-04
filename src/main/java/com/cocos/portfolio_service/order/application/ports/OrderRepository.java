@@ -1,4 +1,4 @@
-package com.cocos.portfolio_service.order.application;
+package com.cocos.portfolio_service.order.application.ports;
 
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.enums.OrderStatus;

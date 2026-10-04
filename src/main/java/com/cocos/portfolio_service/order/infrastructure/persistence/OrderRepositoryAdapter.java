@@ -1,6 +1,6 @@
 package com.cocos.portfolio_service.order.infrastructure.persistence;
 
-import com.cocos.portfolio_service.order.application.OrderRepository;
+import com.cocos.portfolio_service.order.application.ports.OrderRepository;
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
 import com.cocos.portfolio_service.order.utils.mappers.OrderMapper;

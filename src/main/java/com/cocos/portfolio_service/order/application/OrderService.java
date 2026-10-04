@@ -1,114 +1,38 @@
 package com.cocos.portfolio_service.order.application;
 
-import com.cocos.portfolio_service.instrument.application.InstrumentRepository;
-import com.cocos.portfolio_service.instrument.domain.errors.InstrumentNotFoundException;
-import com.cocos.portfolio_service.marketdata.domain.MarketDataRepository;
-import com.cocos.portfolio_service.marketdata.domain.errors.MarketDataNotFoundException;
+import com.cocos.portfolio_service.order.application.ports.IOrderService;
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.OrderToSubmit;
-import com.cocos.portfolio_service.order.domain.enums.OrderSide;
-import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
-import com.cocos.portfolio_service.order.domain.enums.OrderType;
-import com.cocos.portfolio_service.order.domain.errors.InvalidOrderException;
-import com.cocos.portfolio_service.user.domain.UserRepository;
 import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
+import com.cocos.portfolio_service.user.domain.User;
+import com.cocos.portfolio_service.user.domain.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 class OrderService implements IOrderService {
     private final UserRepository userRepository;
-    private final InstrumentRepository instrumentRepository;
-    private final MarketDataRepository marketDataRepository;
-    private final OrderRepository orderRepository;
+    private final Map<String, SubmitStrategy> strategies;
 
-    OrderService(UserRepository userRepository, InstrumentRepository instrumentRepository,
-                 MarketDataRepository marketDataRepository, OrderRepository orderRepository) {
+    OrderService(UserRepository userRepository, Map<String, SubmitStrategy> strategies) {
         this.userRepository = userRepository;
-        this.instrumentRepository = instrumentRepository;
-        this.marketDataRepository = marketDataRepository;
-        this.orderRepository = orderRepository;
+        this.strategies = strategies;
     }
 
     @Override
     @Transactional
-    public Order submit(OrderToSubmit command) {
-        if (command == null || command.userId() == null || command.instrumentId() == null
-                || command.side() == null || command.type() == null) {
-            throw new InvalidOrderException("User, instrument, side, and type are required");
-        }
-        if (!userRepository.existsById(command.userId())) throw new UserNotFoundException(command.userId());
-        instrumentRepository.findById(command.instrumentId())
-                .orElseThrow(() -> new InstrumentNotFoundException(command.instrumentId()));
-        if ((command.quantity() == null) == (command.amount() == null)) {
-            throw new InvalidOrderException("Provide exactly one of size or amount");
-        }
-        if (command.side() == OrderSide.CASH_IN || command.side() == OrderSide.CASH_OUT) {
-            throw new InvalidOrderException("Cash transfer orders cannot be submitted through this endpoint");
-        }
-        if (command.side() == OrderSide.SELL && command.amount() != null) {
-            throw new InvalidOrderException("Amount-based orders are only supported for BUY orders");
-        }
-        if (command.quantity() != null && command.quantity() <= 0
-                || command.amount() != null && command.amount().signum() <= 0) {
-            throw new InvalidOrderException("Quantity and amount must be positive");
-        }
-        if (command.type() == OrderType.LIMIT && (command.price() == null || command.price().signum() <= 0)) {
-            throw new InvalidOrderException("LIMIT orders require a positive price");
-        }
+    public Order submit(Long userId, OrderToSubmit order) {
 
-        BigDecimal executionPrice = command.type() == OrderType.MARKET
-                ? marketDataRepository.findLatestByInstrumentId(command.instrumentId())
-                    .orElseThrow(() -> new MarketDataNotFoundException(command.instrumentId())).close()
-                : command.price();
-        if (executionPrice == null || executionPrice.signum() <= 0) {
-            throw new InvalidOrderException("A positive instrument price is required");
-        }
+        Optional<User> userOpt = userRepository.findById(userId);
+        if(userOpt.isEmpty()) throw new UserNotFoundException(userId);
 
-        long quantity;
-        if (command.amount() != null) {
-            quantity = command.amount().divide(executionPrice, 0, RoundingMode.DOWN).longValueExact();
-            if (quantity == 0) throw new InvalidOrderException("Amount is insufficient to buy one whole share");
-        } else {
-            quantity = command.quantity();
-        }
-        if (quantity <= 0 || quantity > Integer.MAX_VALUE) {
-            throw new InvalidOrderException("Order size must fit the database size range");
-        }
+        SubmitStrategy strategy = strategies.get(order.type().toString());
 
-        var filledOrders = orderRepository.findByUserIdAndStatus(command.userId(), OrderStatus.FILLED);
-        BigDecimal cash = BigDecimal.ZERO;
-        long heldQuantity = 0;
-        for (var order : filledOrders) {
-            switch (order.side()) {
-                case CASH_IN -> cash = cash.add(BigDecimal.valueOf(order.size()));
-                case CASH_OUT -> cash = cash.subtract(BigDecimal.valueOf(order.size()));
-                case BUY -> {
-                    cash = cash.subtract(order.price().multiply(BigDecimal.valueOf(order.size())));
-                    if (order.instrumentId().equals(command.instrumentId())) heldQuantity += order.size();
-                }
-                case SELL -> {
-                    cash = cash.add(order.price().multiply(BigDecimal.valueOf(order.size())));
-                    if (order.instrumentId().equals(command.instrumentId())) heldQuantity -= order.size();
-                }
-            }
-        }
-        boolean rejected;
-        if (command.side() == OrderSide.BUY) {
-            var requiredCash = executionPrice.multiply(BigDecimal.valueOf(quantity));
-            rejected = (command.amount() != null && command.amount().compareTo(cash) > 0)
-                    || requiredCash.compareTo(cash) > 0;
-        } else {
-            rejected = quantity > heldQuantity;
-        }
+        Order orderSaved = strategy.sumbit(order);
 
-        var status = rejected ? OrderStatus.REJECTED
-                : command.type() == OrderType.MARKET ? OrderStatus.FILLED : OrderStatus.NEW;
-        var order = new Order(null, command.userId(), command.instrumentId(), command.side(), quantity,
-                executionPrice, command.type(), status, null);
-        return orderRepository.save(order);
+        return orderSaved;
     }
 }

@@ -6,7 +6,6 @@ import com.cocos.portfolio_service.order.domain.enums.OrderType;
 import java.math.BigDecimal;
 
 public record OrderToSubmit(
-        Long userId,
         Long instrumentId,
         OrderSide side,
         OrderType type,

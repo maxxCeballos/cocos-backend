@@ -1,6 +1,8 @@
 package com.cocos.portfolio_service.order.api;
 
-import com.cocos.portfolio_service.order.application.IOrderService;
+import com.cocos.portfolio_service.order.api.dtos.OrderResponse;
+import com.cocos.portfolio_service.order.api.dtos.SubmitOrderRequest;
+import com.cocos.portfolio_service.order.application.ports.IOrderService;
 import com.cocos.portfolio_service.order.domain.OrderToSubmit;
 import com.cocos.portfolio_service.order.utils.mappers.OrderMapper;
 import com.cocos.portfolio_service.shared.api.ApiErrorResponse;
@@ -11,13 +13,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Validated
 @RestController
@@ -45,10 +44,13 @@ class OrderController {
             @ApiResponse(responseCode = "500", description = "Unexpected server error",
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     })
-    public OrderResponse submit(@Valid @RequestBody SubmitOrderRequest request) {
+    public OrderResponse submit(
+            @RequestHeader("X-User-Id") @Positive Long userId,
+            @Valid @RequestBody SubmitOrderRequest request
+    ) {
 
         OrderToSubmit orderToSubmit = orderMapper.toCommand(request);
 
-        return orderMapper.toResponse(orderService.submit(orderToSubmit));
+        return orderMapper.toResponse(orderService.submit(userId, orderToSubmit));
     }
 }

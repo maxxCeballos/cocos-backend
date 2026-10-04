@@ -4,7 +4,7 @@ import com.cocos.portfolio_service.instrument.application.InstrumentRepository;
 import com.cocos.portfolio_service.instrument.domain.Instrument;
 import com.cocos.portfolio_service.marketdata.domain.MarketData;
 import com.cocos.portfolio_service.marketdata.domain.MarketDataRepository;
-import com.cocos.portfolio_service.order.application.OrderRepository;
+import com.cocos.portfolio_service.order.application.ports.OrderRepository;
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.enums.OrderSide;
 import com.cocos.portfolio_service.order.domain.enums.OrderStatus;

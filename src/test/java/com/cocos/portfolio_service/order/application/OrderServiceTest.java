@@ -6,6 +6,7 @@ import com.cocos.portfolio_service.instrument.domain.errors.InstrumentNotFoundEx
 import com.cocos.portfolio_service.marketdata.domain.MarketData;
 import com.cocos.portfolio_service.marketdata.domain.MarketDataRepository;
 import com.cocos.portfolio_service.marketdata.domain.errors.MarketDataNotFoundException;
+import com.cocos.portfolio_service.order.application.ports.OrderRepository;
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.OrderToSubmit;
 import com.cocos.portfolio_service.order.domain.enums.OrderSide;
@@ -61,7 +62,7 @@ class OrderServiceTest {
         var command = command(OrderSide.BUY, OrderType.MARKET, 2L, null, null);
 
         // ACT
-        var result = orderService.submit(command);
+        var result = orderService.submit(0L, command);
 
         // ASSERT
         assertEquals(2L, result.size());
@@ -76,7 +77,7 @@ class OrderServiceTest {
         var command = command(OrderSide.BUY, OrderType.LIMIT, 2L, null, new BigDecimal("90.00"));
 
         // ACT
-        var result = orderService.submit(command);
+        var result = orderService.submit(0L, command);
 
         // ASSERT
         assertEquals(new BigDecimal("90.00"), result.price());
@@ -89,7 +90,7 @@ class OrderServiceTest {
         var command = command(OrderSide.BUY, OrderType.MARKET, null, new BigDecimal("250.00"), null);
 
         // ACT
-        var result = orderService.submit(command);
+        var result = orderService.submit(0L, command);
 
         // ASSERT
         assertEquals(2L, result.size());
@@ -102,7 +103,7 @@ class OrderServiceTest {
         var command = command(OrderSide.BUY, OrderType.MARKET, 11L, null, null);
 
         // ACT
-        var result = orderService.submit(command);
+        var result = orderService.submit(0L, command);
 
         // ASSERT
         assertEquals(OrderStatus.REJECTED, result.status());
@@ -115,7 +116,7 @@ class OrderServiceTest {
         var command = command(OrderSide.BUY, OrderType.MARKET, 10L, null, null);
 
         // ACT
-        var result = orderService.submit(command);
+        var result = orderService.submit(0L, command);
 
         // ASSERT
         assertEquals(OrderStatus.FILLED, result.status());
@@ -128,7 +129,7 @@ class OrderServiceTest {
         var command = command(OrderSide.SELL, OrderType.MARKET, 1L, null, null);
 
         // ACT
-        var result = orderService.submit(command);
+        var result = orderService.submit(0L, command);
 
         // ASSERT
         assertEquals(OrderStatus.REJECTED, result.status());
@@ -145,7 +146,7 @@ class OrderServiceTest {
         var command = command(OrderSide.SELL, OrderType.MARKET, 1L, null, null);
 
         // ACT
-        var result = orderService.submit(command);
+        var result = orderService.submit(0L, command);
 
         // ASSERT
         assertEquals(OrderStatus.FILLED, result.status());
@@ -159,7 +160,7 @@ class OrderServiceTest {
 
         // ACT & ASSERT
         assertThrows(UserNotFoundException.class,
-                () -> orderService.submit(command(OrderSide.BUY, OrderType.MARKET, 1L, null, null)));
+                () -> orderService.submit(0L, command(OrderSide.BUY, OrderType.MARKET, 1L, null, null)));
     }
 
     @Test
@@ -169,7 +170,7 @@ class OrderServiceTest {
 
         // ACT & ASSERT
         assertThrows(InstrumentNotFoundException.class,
-                () -> orderService.submit(command(OrderSide.BUY, OrderType.MARKET, 1L, null, null)));
+                () -> orderService.submit(0L, command(OrderSide.BUY, OrderType.MARKET, 1L, null, null)));
     }
 
     @Test
@@ -179,7 +180,7 @@ class OrderServiceTest {
 
         // ACT & ASSERT
         assertThrows(MarketDataNotFoundException.class,
-                () -> orderService.submit(command(OrderSide.BUY, OrderType.MARKET, 1L, null, null)));
+                () -> orderService.submit(0L, command(OrderSide.BUY, OrderType.MARKET, 1L, null, null)));
     }
 
     @Test
@@ -188,7 +189,7 @@ class OrderServiceTest {
         var command = command(OrderSide.BUY, OrderType.MARKET, null, null, null);
 
         // ACT & ASSERT
-        assertThrows(InvalidOrderException.class, () -> orderService.submit(command));
+        assertThrows(InvalidOrderException.class, () -> orderService.submit(0L, command));
     }
 
     @Test
@@ -198,7 +199,7 @@ class OrderServiceTest {
 
         // ACT & ASSERT
         assertThrows(IllegalStateException.class,
-                () -> orderService.submit(command(OrderSide.BUY, OrderType.MARKET, 1L, null, null)));
+                () -> orderService.submit(0L, command(OrderSide.BUY, OrderType.MARKET, 1L, null, null)));
     }
 
     private OrderToSubmit command(OrderSide side, OrderType type, Long quantity, BigDecimal amount, BigDecimal price) {

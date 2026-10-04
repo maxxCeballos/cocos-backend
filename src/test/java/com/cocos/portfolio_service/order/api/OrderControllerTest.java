@@ -1,7 +1,9 @@
 package com.cocos.portfolio_service.order.api;
 
 import com.cocos.portfolio_service.instrument.domain.errors.InstrumentNotFoundException;
-import com.cocos.portfolio_service.order.application.IOrderService;
+import com.cocos.portfolio_service.order.api.dtos.OrderResponse;
+import com.cocos.portfolio_service.order.api.dtos.SubmitOrderRequest;
+import com.cocos.portfolio_service.order.application.ports.IOrderService;
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.OrderToSubmit;
 import com.cocos.portfolio_service.order.domain.enums.OrderSide;
@@ -54,7 +56,7 @@ class OrderControllerTest {
     void whenOrderIsValid_thenSubmit_returnsCreatedOrder() throws Exception {
         // ARRANGE
         var order = order(90L, 7L, "FILLED");
-        when(orderCommands.submit(any(OrderToSubmit.class))).thenReturn(order);
+        when(orderCommands.submit(0L, any(OrderToSubmit.class))).thenReturn(order);
         when(orderMapper.toResponse(order)).thenReturn(response(90L, 7L, "FILLED"));
 
         // ACT
@@ -70,7 +72,7 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.id").value(90))
                 .andExpect(jsonPath("$.status").value("FILLED"));
 
-        verify(orderCommands).submit(any(OrderToSubmit.class));
+        verify(orderCommands).submit(0L, any(OrderToSubmit.class));
     }
 
     @Test
@@ -92,7 +94,7 @@ class OrderControllerTest {
     @Test
     void whenUserDoesNotExist_thenSubmit_returnsNotFound() throws Exception {
         // ARRANGE
-        when(orderCommands.submit(any(OrderToSubmit.class))).thenThrow(new UserNotFoundException(404L));
+        when(orderCommands.submit(0L, any(OrderToSubmit.class))).thenThrow(new UserNotFoundException(404L));
 
         // ACT
         var result = mockMvc.perform(post("/api/orders/submit")
@@ -109,7 +111,7 @@ class OrderControllerTest {
     @Test
     void whenInstrumentDoesNotExist_thenSubmit_returnsNotFound() throws Exception {
         // ARRANGE
-        when(orderCommands.submit(any(OrderToSubmit.class))).thenThrow(new InstrumentNotFoundException(404L));
+        when(orderCommands.submit(0L, any(OrderToSubmit.class))).thenThrow(new InstrumentNotFoundException(404L));
 
         // ACT
         var result = mockMvc.perform(post("/api/orders/submit")

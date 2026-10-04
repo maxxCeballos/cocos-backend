@@ -1,8 +1,8 @@
-package com.cocos.portfolio_service.order.application;
+package com.cocos.portfolio_service.order.application.ports;
 
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.OrderToSubmit;
 
 public interface IOrderService {
-    Order submit(OrderToSubmit command);
+    Order submit(Long userId, OrderToSubmit command);
 }

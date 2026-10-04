@@ -1,4 +1,4 @@
-package com.cocos.portfolio_service.order.api;
+package com.cocos.portfolio_service.order.api.dtos;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

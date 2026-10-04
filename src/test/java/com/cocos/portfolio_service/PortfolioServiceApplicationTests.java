@@ -1,7 +1,7 @@
 package com.cocos.portfolio_service;
 
 import com.cocos.portfolio_service.instrument.application.IInstrument;
-import com.cocos.portfolio_service.order.application.IOrderService;
+import com.cocos.portfolio_service.order.application.ports.IOrderService;
 import com.cocos.portfolio_service.portfolio.application.IPortfolioService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
