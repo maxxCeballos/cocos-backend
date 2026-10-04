@@ -52,8 +52,8 @@ class PortfolioService implements IPortfolioService {
         // TODO: make this methods calls concurrent
         BigDecimal availableCash = calculateAvailableCash(orders);
         BigDecimal totalStockShareValue = calculateTotalStockShareValue(orders, marketsData);
-        BigDecimal totalAccountValue = availableCash.add(totalStockShareValue);
 
+        BigDecimal totalAccountValue = availableCash.add(totalStockShareValue);
         List<Portfolio.Instrument> instrumentInfoAggregated = aggregateInstrumentInfo(orders, marketsData, instruments);
 
         return new Portfolio("AR$", totalAccountValue, availableCash, totalStockShareValue, instrumentInfoAggregated);
