@@ -20,6 +20,8 @@ public class CashOutSide implements SideStrategy {
     private static final BigDecimal CASH_OUT_PRICE = BigDecimal.ONE;
 
     public Order submit(OrderContext context, OrderToSubmit orderToSubmit) {
+        OrderStatus status = OrderStatus.FILLED;
+
         if (orderToSubmit.type() != OrderType.MARKET) {
             throw new InvalidOrderException("Cash-out orders must use MARKET type");
         }
@@ -30,7 +32,7 @@ public class CashOutSide implements SideStrategy {
             throw new InvalidOrderException("Cash-out orders require a MONEDA instrument");
         }
         if(!hasEnoughMoney(orderToSubmit.size(), context.availableCash())) {
-            throw new InvalidOrderException("Cash-out orders has not enough money available");
+            status = OrderStatus.REJECTED;
         }
 
         return new Order(
@@ -41,7 +43,7 @@ public class CashOutSide implements SideStrategy {
                 orderToSubmit.size(),
                 CASH_OUT_PRICE,
                 OrderType.MARKET,
-                OrderStatus.FILLED,
+                status,
                 LocalDateTime.now());
     }
 
