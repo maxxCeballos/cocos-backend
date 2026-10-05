@@ -1,6 +1,10 @@
 # cocos-backend
 cocos-challenge-backend
 
+## Considerations and assumptions
+
+- `CASH_IN` deposits are assumed to be whole values only. The current order model stores `size` as an integer and uses a price of `1`, so it cannot represent fractional deposits such as `1000.5`.
+
 ## Portfolio calculations
 
 ### Account values
@@ -53,7 +57,10 @@ Docker Compose starts the Spring Boot API and a PostgreSQL 18.6 database. On fir
 docker compose up --build
 ```
 
-The API is available at <http://localhost:8080>; Swagger UI is at <http://localhost:8080/swagger-ui/index.html>. PostgreSQL is published on port `5432` by default. The local defaults are database `portfolio`, username `portfolio`, and password `portfolio`.
+- The API is available at <http://localhost:8080>
+- Swagger UI is at <http://localhost:8080/swagger-ui/index.html>. 
+- PostgreSQL is published on port `5432` by default. The local defaults are database `portfolio`, username `portfolio`, and password `portfolio`.
+- ValkeyCache is published on port `6379`
 
 Override the local defaults with `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`, or `APP_PORT` in the environment before starting Compose. These defaults are for local development only.
 

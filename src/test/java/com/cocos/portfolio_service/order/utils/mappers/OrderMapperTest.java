@@ -4,6 +4,7 @@ import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.enums.OrderSide;
 import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
 import com.cocos.portfolio_service.order.domain.enums.OrderType;
+import com.cocos.portfolio_service.order.api.dtos.SubmitOrderRequest;
 import com.cocos.portfolio_service.order.infrastructure.persistence.OrderEntity;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
@@ -16,6 +17,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class OrderMapperTest {
     private final OrderMapper orderMapper = Mappers.getMapper(OrderMapper.class);
+
+    @Test
+    void mapsDecimalRequestPriceToCommandWithoutTruncatingFractionalPart() {
+        SubmitOrderRequest request = new SubmitOrderRequest(3L, OrderSide.BUY, OrderType.LIMIT,
+                2L, new BigDecimal("150000.5"));
+
+        var command = orderMapper.toCommand(request);
+
+        assertEquals(new BigDecimal("150000.5"), command.price());
+        assertEquals("150000.5", command.price().toPlainString());
+    }
 
     @Test
     void mapsOrderToEntityAndBackWithoutChangingValues() {
