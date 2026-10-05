@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -39,27 +41,55 @@ class PortfolioService implements IPortfolioService {
     }
 
     public Portfolio getPortfolio(Long userId) {
-        // TODO: make this repositories call concurrent
-        Optional<User> userOpt = userRepository.findById(userId);
-        List<Order> orders = orderRepository.findEffectiveOrdersByUserId(userId);
+        PortfolioContext context = buildContext(userId);
+
+        BigDecimal availableCash = calculateAvailableCash(context.orders());
+        BigDecimal onHoldCash = calculateOnHoldCash(context.orders());
+        BigDecimal totalStockShareValue = calculateTotalStockShareValue(context.orders(), context.marketsData());
+
+        BigDecimal totalAccountValue = availableCash.add(onHoldCash).add(totalStockShareValue);
+        List<Portfolio.Instrument> instrumentInfoAggregated = aggregateInstrumentInfo(context.orders(), context.marketsData(), context.instruments());
+
+        return new Portfolio("AR$", totalAccountValue, availableCash, onHoldCash,
+                totalStockShareValue, instrumentInfoAggregated);
+    }
+
+    private PortfolioContext buildContext(Long userId) {
+        CompletableFuture<Optional<User>> userFuture = CompletableFuture.supplyAsync(
+                () -> userRepository.findById(userId));
+        CompletableFuture<List<Order>> ordersFuture = CompletableFuture.supplyAsync(
+                () -> orderRepository.findEffectiveOrdersByUserId(userId));
+        awaitAll(userFuture, ordersFuture);
+
+        Optional<User> userOpt = userFuture.join();
+        List<Order> orders = ordersFuture.join();
 
         if(userOpt.isEmpty()) throw new UserNotFoundException(userId);
         List<Long> instrumentIds = orders.stream().map(Order::instrumentId).toList();
 
-        // TODO: make this repositories call concurrent
-        List<Instrument> instruments = instrumentRepository.findAllById(instrumentIds);
-        List<MarketData> marketsData = marketDataRepository.findAllById(instrumentIds);
+        CompletableFuture<List<Instrument>> instrumentsFuture = CompletableFuture.supplyAsync(
+                () -> instrumentRepository.findAllById(instrumentIds));
+        CompletableFuture<List<MarketData>> marketsDataFuture = CompletableFuture.supplyAsync(
+                () -> marketDataRepository.findAllById(instrumentIds));
+        awaitAll(instrumentsFuture, marketsDataFuture);
 
-        // TODO: make this methods calls concurrent
-        BigDecimal availableCash = calculateAvailableCash(orders);
-        BigDecimal onHoldCash = calculateOnHoldCash(orders);
-        BigDecimal totalStockShareValue = calculateTotalStockShareValue(orders, marketsData);
+        List<Instrument> instruments = instrumentsFuture.join();
+        List<MarketData> marketsData = marketsDataFuture.join();
 
-        BigDecimal totalAccountValue = availableCash.add(onHoldCash).add(totalStockShareValue);
-        List<Portfolio.Instrument> instrumentInfoAggregated = aggregateInstrumentInfo(orders, marketsData, instruments);
+        PortfolioContext context = new PortfolioContext(userOpt.get(), orders, instruments, marketsData);
 
-        return new Portfolio("AR$", totalAccountValue, availableCash, onHoldCash,
-                totalStockShareValue, instrumentInfoAggregated);
+        return context;
+    }
+
+    private void awaitAll(CompletableFuture<?>... futures) {
+        try {
+            CompletableFuture.allOf(futures).join();
+        } catch (CompletionException exception) {
+            Throwable cause = exception.getCause();
+            if (cause instanceof RuntimeException runtimeException) throw runtimeException;
+            if (cause instanceof Error error) throw error;
+            throw exception;
+        }
     }
 
     // STOCK SHARE: ✅

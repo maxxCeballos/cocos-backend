@@ -28,6 +28,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,6 +47,49 @@ class PortfolioServiceTest {
 
         // ACT & ASSERT
         assertThrows(UserNotFoundException.class, () -> portfolioService.getPortfolio(7L));
+    }
+
+    @Test
+    void whenUserLookupFails_thenGetPortfolio_propagatesFailureAfterStartingOrdersLookup() {
+        when(userRepository.findById(7L)).thenThrow(new IllegalStateException("user lookup failed"));
+        when(orderRepository.findEffectiveOrdersByUserId(7L)).thenReturn(List.of());
+
+        assertThrows(IllegalStateException.class, () -> portfolioService.getPortfolio(7L));
+        verify(orderRepository).findEffectiveOrdersByUserId(7L);
+    }
+
+    @Test
+    void whenOrdersLookupFails_thenGetPortfolio_propagatesFailureAfterStartingUserLookup() {
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user()));
+        when(orderRepository.findEffectiveOrdersByUserId(7L))
+                .thenThrow(new IllegalStateException("orders lookup failed"));
+
+        assertThrows(IllegalStateException.class, () -> portfolioService.getPortfolio(7L));
+        verify(userRepository).findById(7L);
+    }
+
+    @Test
+    void whenInstrumentLookupFails_thenGetPortfolio_propagatesFailureAfterStartingMarketDataLookup() {
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user()));
+        when(orderRepository.findEffectiveOrdersByUserId(7L)).thenReturn(List.of());
+        when(instrumentRepository.findAllById(anyList()))
+                .thenThrow(new IllegalStateException("instrument lookup failed"));
+        when(marketDataRepository.findAllById(anyList())).thenReturn(List.of());
+
+        assertThrows(IllegalStateException.class, () -> portfolioService.getPortfolio(7L));
+        verify(marketDataRepository).findAllById(List.of());
+    }
+
+    @Test
+    void whenMarketDataLookupFails_thenGetPortfolio_propagatesFailureAfterStartingInstrumentLookup() {
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user()));
+        when(orderRepository.findEffectiveOrdersByUserId(7L)).thenReturn(List.of());
+        when(instrumentRepository.findAllById(anyList())).thenReturn(List.of());
+        when(marketDataRepository.findAllById(anyList()))
+                .thenThrow(new IllegalStateException("market data lookup failed"));
+
+        assertThrows(IllegalStateException.class, () -> portfolioService.getPortfolio(7L));
+        verify(instrumentRepository).findAllById(List.of());
     }
 
     @Test
