@@ -120,7 +120,7 @@ public class OrderService implements IOrderService {
         Money.ARS cash = new Money.ARS(BigDecimal.ZERO);
 
         List<Order> ordersToCalculate = orders.stream()
-                .filter(order -> !order.isShareOnHold() && !order.isCashOnHold())
+                .filter(order -> !order.isShareOnHold())
                 .toList();
 
         for (Order order: ordersToCalculate) {

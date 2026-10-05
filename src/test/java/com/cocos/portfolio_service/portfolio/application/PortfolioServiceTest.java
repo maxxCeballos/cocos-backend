@@ -138,7 +138,8 @@ class PortfolioServiceTest {
                 order(OrderSide.CASH_IN, 1000L, 65L, "1.00"),
                 order(OrderSide.BUY, 2L, 3L, "100.00"),
                 order(OrderSide.SELL, 1L, 3L, "150.00"),
-                order(OrderSide.BUY, 2L, 3L, "10.00", OrderStatus.NEW)));
+                order(OrderSide.BUY, 2L, 3L, "10.00", OrderStatus.NEW),
+                order(OrderSide.SELL, 100L, 3L, "50.00", OrderStatus.NEW)));
         when(instrumentRepository.findAllById(anyList())).thenReturn(List.of(instrument()));
         when(marketDataRepository.findAllByInstrumentId(anyList())).thenReturn(List.of(
                 new MarketData(1L, 3L, new BigDecimal("120.00"), new BigDecimal("100.00"), LocalDate.now())));
@@ -150,12 +151,12 @@ class PortfolioServiceTest {
 
         // ASSERT
         assertEquals("AR$", result.currency());
-        assertEquals("$1090.00", result.totalAccountValueLabel());
-        assertEquals(new BigDecimal("950.00"), result.availableCash());
-        assertEquals("$950.00", result.availableCashLabel());
+        assertEquals("$1070.00", result.totalAccountValueLabel());
+        assertEquals(new BigDecimal("930.00"), result.availableCash());
+        assertEquals("$930.00", result.availableCashLabel());
         assertEquals(new BigDecimal("20.00"), result.onHoldCash());
         assertEquals("$20.00", result.onHoldCashLabel());
-        assertEquals(new BigDecimal("1090.00"), result.totalAccountValue());
+        assertEquals(new BigDecimal("1070.00"), result.totalAccountValue());
         assertEquals("$120.00", result.stockShareValueLabel());
         assertEquals(1, result.instruments().size());
         assertEquals(1L, result.instruments().getFirst().size());

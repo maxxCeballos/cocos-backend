@@ -124,6 +124,20 @@ class OrderServiceTest {
     }
 
     @Test
+    void whenCalculatingAvailableCash_thenNewBuyIsReservedAndNewSellIsIgnored() {
+        var orders = List.of(
+                cashOrder(OrderSide.CASH_IN, 1000L, "1.00", OrderStatus.FILLED),
+                cashOrder(OrderSide.BUY, 2L, "100.00", OrderStatus.FILLED),
+                cashOrder(OrderSide.SELL, 1L, "150.00", OrderStatus.FILLED),
+                cashOrder(OrderSide.BUY, 2L, "10.00", OrderStatus.NEW),
+                cashOrder(OrderSide.SELL, 100L, "50.00", OrderStatus.NEW));
+
+        var availableCash = orderService.calculateAvailableCash(orders);
+
+        assertEquals(new BigDecimal("930.00"), availableCash.value());
+    }
+
+    @Test
     void whenSellExceedsAvailableHoldings_thenSubmit_savesRejectedOrder() {
         // ARRANGE
         var command = command(OrderSide.SELL, OrderType.MARKET, 1L, null, null);
@@ -204,5 +218,10 @@ class OrderServiceTest {
 
     private OrderToSubmit command(OrderSide side, OrderType type, Long quantity, BigDecimal amount, BigDecimal price) {
         return new OrderToSubmit(7L, 3L, side, type, quantity, amount, price);
+    }
+
+    private Order cashOrder(OrderSide side, long size, String price, OrderStatus status) {
+        return new Order(1L, 7L, 3L, side, size, new BigDecimal(price), OrderType.MARKET,
+                status, LocalDateTime.of(2023, 7, 13, 12, 0));
     }
 }
