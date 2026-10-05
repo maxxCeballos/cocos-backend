@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 
 @Mapper(componentModel = "spring")
 public interface OrderMapper {
+    @Mapping(target = "price", source = "price", qualifiedByName = "toArs")
     @Mapping(target = "budget", source = "budget", qualifiedByName = "toArs")
     OrderToSubmit toOrderSubmit(SubmitOrderRequest request);
 

@@ -9,5 +9,6 @@ public record OrderToSubmit(
         OrderSide side,
         OrderType type,
         Long size,
+        Money.ARS price,
         Money.ARS budget) {
 }

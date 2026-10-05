@@ -4,5 +4,5 @@ import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.OrderToSubmit;
 
 public interface IOrderService {
-    Order submit(Long userId, OrderToSubmit command);
+    Order submit(Long userId, OrderToSubmit orderToSubmit);
 }

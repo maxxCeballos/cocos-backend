@@ -17,6 +17,10 @@ public record SubmitOrderRequest(
         @NotNull
         Long size,
 
+        @Min(value = 0, message = "El price de la orden no puede ser negativo")
+        @NotNull
+        BigDecimal price,
+
         @Min(value = 0, message = "El budget de la orden no puede ser negativo")
         @NotNull
         BigDecimal budget) {

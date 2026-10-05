@@ -1,8 +1,5 @@
 package com.cocos.portfolio_service.order.application.side_strategy;
 
-import com.cocos.portfolio_service.marketdata.domain.MarketData;
-import com.cocos.portfolio_service.marketdata.domain.MarketDataRepository;
-import com.cocos.portfolio_service.marketdata.domain.errors.MarketDataNotFoundException;
 import com.cocos.portfolio_service.order.application.OrderContext;
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.OrderToSubmit;
@@ -16,7 +13,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 @Log4j2
 @Service("BUY")
@@ -29,16 +25,18 @@ public class BuySide implements SideStrategy {
         OrderStatus status = orderToSubmit.type().equals(OrderType.MARKET) ? OrderStatus.FILLED : OrderStatus.NEW;
         Long size = orderToSubmit.size();
 
-        // TODO: close se utiliza para el caso de MARKET, si la order es LIMIT hay que utilizar el precio que pasa en el request.
-        Money.ARS closeArs = new Money.ARS(context.marketData().close());
+        Money.ARS moneyToInvestByUnit = new Money.ARS(context.marketData().close());
+        if(OrderType.LIMIT.equals(orderToSubmit.type())) {
+            moneyToInvestByUnit = orderToSubmit.price();
+        }
 
         if(size > 0) {
-            if(!hasEnoughMoneyBySize(context.availableCash(), orderToSubmit.size(), closeArs)) {
+            if(!hasEnoughMoneyBySize(context.availableCash(), orderToSubmit.size(), moneyToInvestByUnit)) {
                 log.error("no hay suficiente dinero disponible de userId: {} para la compra del instrumento: {}", context.user().id(), instrumentId);
                 status = OrderStatus.REJECTED;
             }
         } else {
-            size = buyByBudget(context.availableCash(), orderToSubmit.budget(), closeArs);
+            size = buyByBudget(context.availableCash(), orderToSubmit.budget(), moneyToInvestByUnit);
             if(size == -1) {
                 status = OrderStatus.REJECTED;
             }
@@ -50,7 +48,7 @@ public class BuySide implements SideStrategy {
                 context.instrument().id(),
                 OrderSide.BUY,
                 size,
-                closeArs.value(),
+                moneyToInvestByUnit.value(),
                 orderToSubmit.type(),
                 status,
                 LocalDateTime.now());
