@@ -7,6 +7,7 @@ public record Portfolio(
         String currency,
         BigDecimal totalAccountValue,
         BigDecimal availableCash,
+        BigDecimal onHoldCash,
         BigDecimal stockShareValue,
         List<Instrument> instruments) {
 

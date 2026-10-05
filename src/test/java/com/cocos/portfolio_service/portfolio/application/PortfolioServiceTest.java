@@ -60,6 +60,7 @@ class PortfolioServiceTest {
         // ASSERT
         assertEquals(BigDecimal.ZERO, result.totalAccountValue());
         assertEquals(BigDecimal.ZERO, result.availableCash());
+        assertEquals(BigDecimal.ZERO, result.onHoldCash());
         assertEquals(List.of(), result.instruments());
     }
 
@@ -76,6 +77,7 @@ class PortfolioServiceTest {
 
         // ASSERT
         assertEquals(new BigDecimal("375"), result.availableCash());
+        assertEquals(BigDecimal.ZERO, result.onHoldCash());
         assertEquals(new BigDecimal("375"), result.totalAccountValue());
         assertEquals(List.of(), result.instruments());
     }
@@ -87,7 +89,8 @@ class PortfolioServiceTest {
         when(orderRepository.findEffectiveOrdersByUserId(7L)).thenReturn(List.of(
                 order(OrderSide.CASH_IN, 1000L, 65L, "1.00"),
                 order(OrderSide.BUY, 2L, 3L, "100.00"),
-                order(OrderSide.SELL, 1L, 3L, "150.00")));
+                order(OrderSide.SELL, 1L, 3L, "150.00"),
+                order(OrderSide.BUY, 2L, 3L, "10.00", OrderStatus.NEW)));
         when(instrumentRepository.findAllById(anyList())).thenReturn(List.of(instrument()));
         when(marketDataRepository.findAllById(anyList())).thenReturn(List.of(
                 new MarketData(1L, 3L, new BigDecimal("120.00"), new BigDecimal("100.00"), LocalDate.now())));
@@ -99,7 +102,8 @@ class PortfolioServiceTest {
 
         // ASSERT
         assertEquals(new BigDecimal("950.00"), result.availableCash());
-        assertEquals(new BigDecimal("1070.00"), result.totalAccountValue());
+        assertEquals(new BigDecimal("20.00"), result.onHoldCash());
+        assertEquals(new BigDecimal("1090.00"), result.totalAccountValue());
         assertEquals(1, result.instruments().size());
         assertEquals(1L, result.instruments().getFirst().size());
         assertEquals(new BigDecimal("120.00"), result.instruments().getFirst().marketValue());
@@ -120,8 +124,12 @@ class PortfolioServiceTest {
     }
 
     private Order order(OrderSide side, long quantity, long instrumentId, String price) {
+        return order(side, quantity, instrumentId, price, OrderStatus.FILLED);
+    }
+
+    private Order order(OrderSide side, long quantity, long instrumentId, String price, OrderStatus status) {
         return new Order(1L, 7L, instrumentId, side, quantity, new BigDecimal(price), OrderType.MARKET,
-                OrderStatus.FILLED, LocalDateTime.of(2023, 7, 13, 12, 0));
+                status, LocalDateTime.of(2023, 7, 13, 12, 0));
     }
 
     private User user() {

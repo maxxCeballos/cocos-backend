@@ -7,6 +7,7 @@ public record PortfolioResponse(
         String currency,
         BigDecimal totalAccountValue,
         BigDecimal availableCash,
+        BigDecimal onHoldCash,
         BigDecimal stockShareValue,
         List<InstrumentResponse> instruments) {
 

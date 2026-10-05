@@ -10,18 +10,19 @@ These formulas describe the current API behavior. An order's value is `price × 
 ```text
 availableCash = sum(CASH_IN values)
               + sum(FILLED SELL values)
-              + sum(NEW BUY values)
               - sum(CASH_OUT values)
               - sum(FILLED BUY values)
+
+onHoldCash = sum(NEW BUY values)
 
 stockShareValue = sum over instruments(
     (sum(FILLED BUY sizes) - sum(FILLED SELL sizes)) × latest close
 )
 
-totalAccountValue = availableCash + stockShareValue
+totalAccountValue = availableCash + onHoldCash + stockShareValue
 ```
 
-`NEW SELL` orders do not affect either available cash or stock share value. In the current implementation, `NEW BUY` order values are added to `availableCash` and do not affect `stockShareValue`.
+`NEW SELL` orders do not affect available cash, on-hold cash, or stock share value. `NEW BUY` order values are reported in `onHoldCash` and do not affect `stockShareValue`.
 
 ### Instrument return calculation
 

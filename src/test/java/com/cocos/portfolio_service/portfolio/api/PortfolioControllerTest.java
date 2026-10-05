@@ -2,7 +2,7 @@ package com.cocos.portfolio_service.portfolio.api;
 
 import com.cocos.portfolio_service.portfolio.application.IPortfolioService;
 import com.cocos.portfolio_service.portfolio.domain.Portfolio;
-import com.cocos.portfolio_service.portfolio.utils.mappers.PortfolioMapper;
+import com.cocos.portfolio_service.portfolio.utils.mappers.PortfolioMapperImpl;
 import com.cocos.portfolio_service.shared.api.GlobalExceptionHandler;
 import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
 import org.junit.jupiter.api.Test;
@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(PortfolioController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, PortfolioMapperImpl.class})
 class PortfolioControllerTest {
     @Autowired
     private MockMvc mockMvc;
@@ -30,20 +30,14 @@ class PortfolioControllerTest {
     @MockitoBean
     private IPortfolioService portfolioQuery;
 
-    @MockitoBean
-    private PortfolioMapper portfolioMapper;
-
     @Test
     void whenUserExists_thenGetPortfolio_returnsPortfolio() throws Exception {
         // ARRANGE
-        var portfolio = new Portfolio(new BigDecimal("12500.00"), new BigDecimal("2500.00"), List.of(
+        var portfolio = new Portfolio("AR$", new BigDecimal("12500.00"), new BigDecimal("2500.00"),
+                new BigDecimal("500.00"), new BigDecimal("10000.00"), List.of(
                 new Portfolio.Instrument(3L, "ABC", "Example Corp", 10,
                         new BigDecimal("10000.00"), new BigDecimal("4.25"))));
         when(portfolioQuery.getPortfolio(7L)).thenReturn(portfolio);
-        when(portfolioMapper.toResponse(portfolio)).thenReturn(new PortfolioResponse(
-                new BigDecimal("12500.00"), new BigDecimal("2500.00"), List.of(
-                new PortfolioResponse.InstrumentResponse(3L, "ABC", "Example Corp", 10,
-                        new BigDecimal("10000.00"), new BigDecimal("4.25")))));
 
         // ACT
         var result = mockMvc.perform(get("/api/portfolio/users/7"));
@@ -53,6 +47,7 @@ class PortfolioControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalAccountValue").value(12500.00))
                 .andExpect(jsonPath("$.availableCash").value(2500.00))
+                .andExpect(jsonPath("$.onHoldCash").value(500.00))
                 .andExpect(jsonPath("$.instruments[0].ticker").value("ABC"))
                 .andExpect(jsonPath("$.instruments[0].size").value(10));
 

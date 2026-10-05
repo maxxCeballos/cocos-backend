@@ -52,12 +52,14 @@ class PortfolioService implements IPortfolioService {
 
         // TODO: make this methods calls concurrent
         BigDecimal availableCash = calculateAvailableCash(orders);
+        BigDecimal onHoldCash = calculateOnHoldCash(orders);
         BigDecimal totalStockShareValue = calculateTotalStockShareValue(orders, marketsData);
 
-        BigDecimal totalAccountValue = availableCash.add(totalStockShareValue);
+        BigDecimal totalAccountValue = availableCash.add(onHoldCash).add(totalStockShareValue);
         List<Portfolio.Instrument> instrumentInfoAggregated = aggregateInstrumentInfo(orders, marketsData, instruments);
 
-        return new Portfolio("AR$", totalAccountValue, availableCash, totalStockShareValue, instrumentInfoAggregated);
+        return new Portfolio("AR$", totalAccountValue, availableCash, onHoldCash,
+                totalStockShareValue, instrumentInfoAggregated);
     }
 
     // STOCK SHARE: ✅
@@ -82,12 +84,14 @@ class PortfolioService implements IPortfolioService {
     private BigDecimal calculateAvailableCash(List<Order> orders) {
         BigDecimal cash = BigDecimal.ZERO;
 
-        List<Order> ordersToCalculate = orders.stream().filter(order -> !order.isShareOnHold()).toList();
+        List<Order> ordersToCalculate = orders.stream()
+                .filter(order -> !order.isShareOnHold() && !order.isCashOnHold())
+                .toList();
 
         for (Order order: ordersToCalculate) {
             BigDecimal valueToOperate = order.orderValue();
 
-            if(order.isCashIn() || order.toCashSwapped() || order.isCashOnHold()) {
+            if(order.isCashIn() || order.toCashSwapped()) {
                 cash = cash.add(valueToOperate);
                 continue;
             }
@@ -96,6 +100,14 @@ class PortfolioService implements IPortfolioService {
         }
 
         return cash;
+    }
+
+    // ON-HOLD-CASH: ✅
+    private BigDecimal calculateOnHoldCash(List<Order> orders) {
+        return orders.stream()
+                .filter(Order::isCashOnHold)
+                .map(Order::orderValue)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private List<Portfolio.Instrument> aggregateInstrumentInfo(List<Order> orders, List<MarketData> marketsData, List<Instrument> instruments) {
