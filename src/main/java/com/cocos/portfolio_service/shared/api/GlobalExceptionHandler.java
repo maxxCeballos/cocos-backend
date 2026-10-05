@@ -6,6 +6,8 @@ import com.cocos.portfolio_service.marketdata.domain.errors.MarketDataNotFoundEx
 import com.cocos.portfolio_service.marketdata.domain.errors.InvalidMarketDataException;
 import com.cocos.portfolio_service.order.domain.errors.InvalidOrderException;
 import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
+import com.cocos.portfolio_service.shared.domain.errors.LockAcquisitionTimeoutException;
+import com.cocos.portfolio_service.shared.domain.errors.ValkeyUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -44,6 +46,21 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleBadRequest(Exception exception, HttpServletRequest request) {
         logger.warn("Invalid request for {} {}: {}", request.getMethod(), request.getRequestURI(), exception.getMessage());
         return error(HttpStatus.BAD_REQUEST, "Request is invalid", request);
+    }
+
+    @ExceptionHandler(LockAcquisitionTimeoutException.class)
+    public ResponseEntity<ApiErrorResponse> handleLockTimeout(
+            LockAcquisitionTimeoutException exception, HttpServletRequest request) {
+        logger.warn("Could not acquire distributed lock for {} {}: {}", request.getMethod(),
+                request.getRequestURI(), exception.getMessage());
+        return error(HttpStatus.CONFLICT, "The user has another operation in progress", request);
+    }
+
+    @ExceptionHandler(ValkeyUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleValkeyUnavailable(
+            ValkeyUnavailableException exception, HttpServletRequest request) {
+        logger.error("Valkey operation failed for {} {}", request.getMethod(), request.getRequestURI(), exception);
+        return error(HttpStatus.SERVICE_UNAVAILABLE, "Valkey is unavailable", request);
     }
 
     @ExceptionHandler(Exception.class)

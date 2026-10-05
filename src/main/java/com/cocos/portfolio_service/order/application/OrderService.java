@@ -5,6 +5,8 @@ import com.cocos.portfolio_service.order.application.side_strategy.SideStrategy;
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.OrderToSubmit;
 import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
+import com.cocos.portfolio_service.shared.infrastructure.lock.SharedLockService;
+import com.cocos.portfolio_service.shared.infrastructure.lock.SharedLockService.LockHandle;
 import com.cocos.portfolio_service.user.domain.User;
 import com.cocos.portfolio_service.user.domain.UserRepository;
 import org.springframework.stereotype.Service;
@@ -17,10 +19,12 @@ import java.util.Optional;
 class OrderService implements IOrderService {
     private final UserRepository userRepository;
     private final Map<String, SideStrategy> strategies;
+    private final SharedLockService lockService;
 
-    OrderService(UserRepository userRepository, Map<String, SideStrategy> strategies) {
+    OrderService(UserRepository userRepository, Map<String, SideStrategy> strategies, SharedLockService lockService) {
         this.userRepository = userRepository;
         this.strategies = strategies;
+        this.lockService = lockService;
     }
 
     @Override
@@ -31,15 +35,12 @@ class OrderService implements IOrderService {
         if(userOpt.isEmpty()) throw new UserNotFoundException(userId);
 
         SideStrategy strategy = strategies.get(order.side().toString());
-        String lockKey = "lock:user:" + userId;
+        LockHandle lock = lockService.acquireForUser(userId);
 
         try {
-            // TODO: acquire lock
-            Order orderSaved = strategy.submit(userId, order);
-            return orderSaved;
-
+            return strategy.submit(userId, order);
         } finally {
-            // TODO: release lock
+            lock.release();
         }
     }
 }

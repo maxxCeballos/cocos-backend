@@ -34,6 +34,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      valkey:
+        condition: service_healthy
     environment:
       NEON_DB_URL: jdbc:postgresql://postgres:5432/portfolio
       NEON_DB_USERNAME: portfolio

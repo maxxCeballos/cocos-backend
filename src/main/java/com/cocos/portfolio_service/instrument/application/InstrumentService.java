@@ -6,6 +6,7 @@ import com.cocos.portfolio_service.instrument.domain.InstrumentSearchResult;
 import com.cocos.portfolio_service.instrument.domain.errors.InstrumentNotFoundException;
 import com.cocos.portfolio_service.instrument.domain.errors.InvalidInstrumentSearchQueryException;
 import com.cocos.portfolio_service.shared.infrastructure.cache.SharedListCache;
+import com.cocos.portfolio_service.shared.domain.errors.ValkeyUnavailableException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
 import org.slf4j.Logger;
@@ -13,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.dao.DataAccessException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,8 +58,9 @@ class InstrumentService implements IInstrument {
         try {
             String value = jsonMapper.writeValueAsString(InstrumentSearchCacheEntry.from(instrument));
             cache.append(cacheKey, value);
-        } catch (DataAccessException | JacksonException exception) {
-            logger.warn("Valkey write failed for key {}; returning instrument from database", cacheKey, exception);
+        } catch (JacksonException exception) {
+            logger.error("Unable to serialize instrument cache entry for key {}", cacheKey, exception);
+            throw new ValkeyUnavailableException("Unable to write instrument to Valkey cache", exception);
         }
 
         List<Instrument> content = pageable.getPageNumber() == 0 ? List.of(instrument) : List.of();
@@ -78,9 +79,9 @@ class InstrumentService implements IInstrument {
                     : (int) ((totalElements + pageable.getPageSize() - 1) / pageable.getPageSize());
             return new InstrumentSearchResult(instruments, pageable.getPageNumber(), pageable.getPageSize(),
                     totalElements, totalPages);
-        } catch (DataAccessException | JacksonException exception) {
-            logger.warn("Valkey read failed for key {}; falling back to the instrument database", cacheKey, exception);
-            return toSearchResult(instrumentRepository.findAll(pageable));
+        } catch (JacksonException exception) {
+            logger.error("Unable to deserialize instrument cache entry for key {}", cacheKey, exception);
+            throw new ValkeyUnavailableException("Unable to read instrument from Valkey cache", exception);
         }
     }
 
