@@ -19,14 +19,13 @@ class OrderMapperTest {
     private final OrderMapper orderMapper = Mappers.getMapper(OrderMapper.class);
 
     @Test
-    void mapsDecimalRequestPriceToCommandWithoutTruncatingFractionalPart() {
+    void mapsDecimalRequestBudgetToArsWithoutTruncatingFractionalPart() {
         SubmitOrderRequest request = new SubmitOrderRequest(3L, OrderSide.BUY, OrderType.LIMIT,
                 2L, new BigDecimal("150000.5"));
 
-        var command = orderMapper.toCommand(request);
+        var command = orderMapper.toOrderSubmit(request);
 
-        assertEquals(new BigDecimal("150000.5"), command.price());
-        assertEquals("150000.5", command.price().toPlainString());
+        assertEquals(new BigDecimal("150000.5"), command.budget().value());
     }
 
     @Test

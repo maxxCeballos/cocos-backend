@@ -49,7 +49,7 @@ class OrderController {
             @Valid @RequestBody SubmitOrderRequest request
     ) {
 
-        OrderToSubmit orderToSubmit = orderMapper.toCommand(request);
+        OrderToSubmit orderToSubmit = orderMapper.toOrderSubmit(request);
 
         return orderMapper.toResponse(orderService.submit(userId, orderToSubmit));
     }

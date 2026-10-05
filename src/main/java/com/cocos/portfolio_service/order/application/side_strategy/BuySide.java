@@ -1,5 +1,8 @@
 package com.cocos.portfolio_service.order.application.side_strategy;
 
+import com.cocos.portfolio_service.marketdata.domain.MarketData;
+import com.cocos.portfolio_service.marketdata.domain.MarketDataRepository;
+import com.cocos.portfolio_service.marketdata.domain.errors.MarketDataNotFoundException;
 import com.cocos.portfolio_service.order.application.OrderContext;
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.OrderToSubmit;
@@ -7,40 +10,70 @@ import com.cocos.portfolio_service.order.domain.enums.OrderSide;
 import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
 import com.cocos.portfolio_service.order.domain.enums.OrderType;
 import com.cocos.portfolio_service.shared.domain.money.Money;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
+@Log4j2
 @Service("BUY")
 public class BuySide implements SideStrategy {
 
     public BuySide() {}
 
     public Order submit(OrderContext context, OrderToSubmit orderToSubmit) {
+        Long instrumentId = orderToSubmit.instrumentId();
         OrderStatus status = orderToSubmit.type().equals(OrderType.MARKET) ? OrderStatus.FILLED : OrderStatus.NEW;
+        Long size = orderToSubmit.size();
+
+        // TODO: close se utiliza para el caso de MARKET, si la order es LIMIT hay que utilizar el precio que pasa en el request.
+        Money.ARS closeArs = new Money.ARS(context.marketData().close());
+
+        if(size > 0) {
+            if(!hasEnoughMoneyBySize(context.availableCash(), orderToSubmit.size(), closeArs)) {
+                log.error("no hay suficiente dinero disponible de userId: {} para la compra del instrumento: {}", context.user().id(), instrumentId);
+                status = OrderStatus.REJECTED;
+            }
+        } else {
+            size = buyByBudget(context.availableCash(), orderToSubmit.budget(), closeArs);
+            if(size == -1) {
+                status = OrderStatus.REJECTED;
+            }
+        }
 
         return new Order(
                 null,
                 context.user().id(),
                 context.instrument().id(),
                 OrderSide.BUY,
-                orderToSubmit.size(),
-                null,
+                size,
+                closeArs.value(),
                 orderToSubmit.type(),
                 status,
                 LocalDateTime.now());
     }
 
-    private void calculateMoneyToSpend(Long size) {
-        if(size > 0) {
-            // TODO: se toma en cuenta el size no el presupuesto
-        } else {
-            // TODO: se toma en cuenta el presupuesto
-        }
+    private boolean hasEnoughMoneyBySize(Money.ARS availableCash, Long size, Money.ARS close) {
+        Money.ARS totalPrice = close.multiply(BigDecimal.valueOf(size));
+        return hasEnoughMoney(availableCash, totalPrice);
     }
 
-    private boolean hasEnoughMoney(Long cashOut, Money.ARS availableCash) {
-        return BigDecimal.valueOf(cashOut).compareTo(availableCash.value()) < 1;
+    private Long buyByBudget(Money.ARS availableCash, Money.ARS budget, Money.ARS close) {
+        Long size;
+
+        if(!hasEnoughMoney(availableCash, budget)) {
+            size = -1L;
+        } else {
+            size = budget.value().divide(close.value(), 0, RoundingMode.DOWN).longValue();
+        }
+
+        return size;
+    }
+
+    private boolean hasEnoughMoney(Money.ARS availableCash, Money.ARS cashOut) {
+        return cashOut.value().compareTo(availableCash.value()) < 1;
     }
 }

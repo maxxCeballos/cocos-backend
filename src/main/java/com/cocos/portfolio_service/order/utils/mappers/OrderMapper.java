@@ -5,13 +5,17 @@ import com.cocos.portfolio_service.order.api.dtos.SubmitOrderRequest;
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.OrderToSubmit;
 import com.cocos.portfolio_service.order.infrastructure.persistence.OrderEntity;
+import com.cocos.portfolio_service.shared.domain.money.Money;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
+import java.math.BigDecimal;
+
 @Mapper(componentModel = "spring")
 public interface OrderMapper {
-    OrderToSubmit toCommand(SubmitOrderRequest request);
+    @Mapping(target = "budget", source = "budget", qualifiedByName = "toArs")
+    OrderToSubmit toOrderSubmit(SubmitOrderRequest request);
 
     OrderResponse toResponse(Order order);
 
@@ -29,5 +33,10 @@ public interface OrderMapper {
     @Named("toDomainSize")
     default Long toDomainSize(Integer size) {
         return size == null ? null : size.longValue();
+    }
+
+    @Named("toArs")
+    default Money.ARS toArs(BigDecimal value) {
+        return value == null ? new Money.ARS(BigDecimal.ZERO) : new Money.ARS(value);
     }
 }

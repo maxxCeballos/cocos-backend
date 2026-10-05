@@ -45,7 +45,7 @@ class OrderControllerTest {
 
     @BeforeEach
     void setUpMapper() {
-        when(orderMapper.toCommand(any(SubmitOrderRequest.class))).thenAnswer(invocation -> {
+        when(orderMapper.toOrderSubmit(any(SubmitOrderRequest.class))).thenAnswer(invocation -> {
             SubmitOrderRequest request = invocation.getArgument(0);
             return new OrderToSubmit(request.userId(), request.instrumentId(), request.side(),
                     request.type(), request.size(), request.amount(), request.price());
