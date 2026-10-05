@@ -4,6 +4,7 @@ import com.cocos.portfolio_service.instrument.application.InstrumentRepository;
 import com.cocos.portfolio_service.instrument.domain.Instrument;
 import com.cocos.portfolio_service.marketdata.domain.MarketData;
 import com.cocos.portfolio_service.marketdata.domain.MarketDataRepository;
+import com.cocos.portfolio_service.order.application.OrderService;
 import com.cocos.portfolio_service.order.application.ports.OrderRepository;
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.enums.OrderSide;
@@ -26,15 +27,21 @@ import java.util.stream.Collectors;
 @Service
 class PortfolioService implements IPortfolioService {
     private final UserRepository userRepository;
+    private final OrderService orderService;
     private final OrderRepository orderRepository;
     private final InstrumentRepository instrumentRepository;
     private final MarketDataRepository marketDataRepository;
     private final ReturnService returnService;
 
-    PortfolioService(UserRepository userRepository, OrderRepository orderRepository,
-                     InstrumentRepository instrumentRepository, MarketDataRepository marketDataRepository,
-                     ReturnService returnService) {
+    PortfolioService(
+            UserRepository userRepository,
+            OrderService orderService,
+            OrderRepository orderRepository,
+            InstrumentRepository instrumentRepository,
+            MarketDataRepository marketDataRepository,
+            ReturnService returnService) {
         this.userRepository = userRepository;
+        this.orderService = orderService;
         this.orderRepository = orderRepository;
         this.instrumentRepository = instrumentRepository;
         this.marketDataRepository = marketDataRepository;
@@ -44,7 +51,7 @@ class PortfolioService implements IPortfolioService {
     public Portfolio getPortfolio(Long userId) {
         PortfolioContext context = buildContext(userId);
 
-        Money.ARS availableCash = calculateAvailableCash(context.orders());
+        Money.ARS availableCash = orderService.calculateAvailableCash(context.orders());
         Money.ARS onHoldCash = calculateOnHoldCash(context.orders());
         Money.ARS totalStockShareValue = calculateTotalStockShareValue(context.orders(), context.marketsData());
 
@@ -115,29 +122,6 @@ class PortfolioService implements IPortfolioService {
         }
 
         return totalStockShareValue;
-    }
-
-    // CASH: ✅
-    private Money.ARS calculateAvailableCash(List<Order> orders) {
-        Money.ARS cash = new Money.ARS(BigDecimal.ZERO);
-
-        List<Order> ordersToCalculate = orders.stream()
-                .filter(order -> !order.isShareOnHold() && !order.isCashOnHold())
-                .toList();
-
-        for (Order order: ordersToCalculate) {
-            Money.ARS valueToOperate = new Money.ARS(order.price())
-                    .multiply(BigDecimal.valueOf(order.size()));
-
-            if(order.isCashIn() || order.toCashSwapped()) {
-                cash = cash.add(valueToOperate);
-                continue;
-            }
-
-            cash = cash.subtract(valueToOperate);
-        }
-
-        return cash;
     }
 
     // ON-HOLD-CASH: ✅

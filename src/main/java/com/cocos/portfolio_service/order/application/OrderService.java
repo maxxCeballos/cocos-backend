@@ -8,8 +8,8 @@ import com.cocos.portfolio_service.order.application.ports.OrderRepository;
 import com.cocos.portfolio_service.order.application.side_strategy.SideStrategy;
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.OrderToSubmit;
-import com.cocos.portfolio_service.portfolio.domain.Portfolio;
 import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
+import com.cocos.portfolio_service.shared.domain.money.Money;
 import com.cocos.portfolio_service.shared.infrastructure.lock.SharedLockService;
 import com.cocos.portfolio_service.shared.infrastructure.lock.SharedLockService.LockHandle;
 import com.cocos.portfolio_service.user.domain.User;
@@ -17,11 +17,15 @@ import com.cocos.portfolio_service.user.domain.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 @Service
-class OrderService implements IOrderService {
+public class OrderService implements IOrderService {
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
     private final InstrumentRepository instrumentRepository;
@@ -52,7 +56,7 @@ class OrderService implements IOrderService {
         if(instOpt.isEmpty()) throw new InstrumentNotFoundException(orderToSubmit.instrumentId());
 
         SideStrategy strategy = strategies.get(orderToSubmit.side().toString());
-        OrderContext context = new OrderContext(userOpt.get(), instOpt.get());
+        OrderContext context = buildContext(userId, orderToSubmit.instrumentId());
 
         LockHandle lock = lockService.acquireForUser(userId);
 
@@ -63,5 +67,64 @@ class OrderService implements IOrderService {
         } finally {
             lock.release();
         }
+    }
+
+    public OrderContext buildContext(Long userId, Long instrumentId) {
+        CompletableFuture<Optional<User>> userFuture = CompletableFuture.supplyAsync(
+                () -> userRepository.findById(userId));
+        CompletableFuture<List<Order>> ordersFuture = CompletableFuture.supplyAsync(
+                () -> orderRepository.findEffectiveOrdersByUserId(userId));
+
+        awaitAll(userFuture, ordersFuture);
+
+        Optional<User> userOpt = userFuture.join();
+        List<Order> orders = ordersFuture.join();
+
+        if(userOpt.isEmpty()) throw new UserNotFoundException(userId);
+
+        CompletableFuture<Optional<Instrument>> instrumentFuture = CompletableFuture.supplyAsync(
+                () -> instrumentRepository.findById(instrumentId));
+        awaitAll(instrumentFuture);
+
+        Optional<Instrument> instOpt = instrumentFuture.join();
+        if(instOpt.isEmpty()) throw new InstrumentNotFoundException(instrumentId);
+
+        Money.ARS availableCash = calculateAvailableCash(orders);
+
+        return new OrderContext(userOpt.get(), instOpt.get(), orders, availableCash);
+    }
+
+    private void awaitAll(CompletableFuture<?>... futures) {
+        try {
+            CompletableFuture.allOf(futures).join();
+        } catch (CompletionException exception) {
+            Throwable cause = exception.getCause();
+            if (cause instanceof RuntimeException runtimeException) throw runtimeException;
+            if (cause instanceof Error error) throw error;
+            throw exception;
+        }
+    }
+
+    // CASH: ✅
+    public Money.ARS calculateAvailableCash(List<Order> orders) {
+        Money.ARS cash = new Money.ARS(BigDecimal.ZERO);
+
+        List<Order> ordersToCalculate = orders.stream()
+                .filter(order -> !order.isShareOnHold() && !order.isCashOnHold())
+                .toList();
+
+        for (Order order: ordersToCalculate) {
+            Money.ARS valueToOperate = new Money.ARS(order.price())
+                    .multiply(BigDecimal.valueOf(order.size()));
+
+            if(order.isCashIn() || order.toCashSwapped()) {
+                cash = cash.add(valueToOperate);
+                continue;
+            }
+
+            cash = cash.subtract(valueToOperate);
+        }
+
+        return cash;
     }
 }
