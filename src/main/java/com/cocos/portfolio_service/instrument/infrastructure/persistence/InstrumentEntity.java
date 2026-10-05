@@ -1,11 +1,7 @@
 package com.cocos.portfolio_service.instrument.infrastructure.persistence;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Column;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.cocos.portfolio_service.instrument.domain.enums.InstrumentType;
+import jakarta.persistence.*;
 import lombok.Getter;
 
 @Entity
@@ -21,6 +17,7 @@ public class InstrumentEntity {
     @Column(length = 255)
     private String name;
 
+    @Enumerated(EnumType.STRING)
     @Column(length = 10)
-    private String type;
+    private InstrumentType type;
 }

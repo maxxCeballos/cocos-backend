@@ -6,6 +6,8 @@ import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.OrderToSubmit;
 import com.cocos.portfolio_service.order.infrastructure.persistence.OrderEntity;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 
 @Mapper(componentModel = "spring")
 public interface OrderMapper {
@@ -13,5 +15,19 @@ public interface OrderMapper {
 
     OrderResponse toResponse(Order order);
 
+    @Mapping(target = "size", source = "size", qualifiedByName = "toDomainSize")
     Order toOrderDomain(OrderEntity order);
+
+    @Mapping(target = "size", source = "size", qualifiedByName = "toEntitySize")
+    OrderEntity toOrderEntity(Order order);
+
+    @Named("toEntitySize")
+    default Integer toEntitySize(Long size) {
+        return size == null ? null : Math.toIntExact(size);
+    }
+
+    @Named("toDomainSize")
+    default Long toDomainSize(Integer size) {
+        return size == null ? null : size.longValue();
+    }
 }

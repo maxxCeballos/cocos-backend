@@ -12,14 +12,15 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "orders")
 @Getter
+@Setter
 public class OrderEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -51,23 +52,4 @@ public class OrderEntity {
     @Column(name = "datetime")
     private LocalDateTime datetime;
 
-    public static OrderEntity fromDomain(com.cocos.portfolio_service.order.domain.Order order) {
-        var entity = new OrderEntity();
-        entity.id = order.id() == null ? null : order.id();
-        entity.instrumentId = order.instrumentId();
-        entity.userId = order.userId();
-        entity.size = Math.toIntExact(order.size());
-        entity.price = order.price();
-        entity.type = order.type();
-        entity.side = order.side();
-        entity.status = order.status();
-        entity.datetime = order.datetime() == null ? null : order.datetime();
-        return entity;
-    }
-
-    public com.cocos.portfolio_service.order.domain.Order toDomain() {
-        return new com.cocos.portfolio_service.order.domain.Order(id, userId,
-                instrumentId, side, size.longValue(), price, type, status,
-                datetime == null ? null : LocalDateTime.from(datetime.toInstant(ZoneOffset.UTC)));
-    }
 }

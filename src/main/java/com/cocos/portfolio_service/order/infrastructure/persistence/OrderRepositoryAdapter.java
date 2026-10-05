@@ -32,6 +32,6 @@ public class OrderRepositoryAdapter implements OrderRepository {
 
     @Override
     public Order save(Order order) {
-        return repository.save(OrderEntity.fromDomain(order)).toDomain();
+        return orderMapper.toOrderDomain(repository.save(orderMapper.toOrderEntity(order)));
     }
 }

@@ -1,4 +1,6 @@
 package com.cocos.portfolio_service.instrument.domain;
 
-public record Instrument(Long id, String ticker, String name, String type) {
+import com.cocos.portfolio_service.instrument.domain.enums.InstrumentType;
+
+public record Instrument(Long id, String ticker, String name, InstrumentType type) {
 }
