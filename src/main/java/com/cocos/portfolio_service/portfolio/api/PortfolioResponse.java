@@ -6,9 +6,13 @@ import java.util.List;
 public record PortfolioResponse(
         String currency,
         BigDecimal totalAccountValue,
+        String totalAccountValueLabel,
         BigDecimal availableCash,
+        String availableCashLabel,
         BigDecimal onHoldCash,
+        String onHoldCashLabel,
         BigDecimal stockShareValue,
+        String stockShareValueLabel,
         List<InstrumentResponse> instruments) {
 
     public record InstrumentResponse(
@@ -17,6 +21,7 @@ public record PortfolioResponse(
             String name,
             long size,
             BigDecimal marketValue,
+            String marketValueLabel,
             BigDecimal totalReturnPercent) {
     }
 }

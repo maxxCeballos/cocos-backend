@@ -103,8 +103,12 @@ class PortfolioServiceTest {
 
         // ASSERT
         assertEquals(BigDecimal.ZERO, result.totalAccountValue());
+        assertEquals("$0.00", result.totalAccountValueLabel());
         assertEquals(BigDecimal.ZERO, result.availableCash());
+        assertEquals("$0.00", result.availableCashLabel());
         assertEquals(BigDecimal.ZERO, result.onHoldCash());
+        assertEquals("$0.00", result.onHoldCashLabel());
+        assertEquals("$0.00", result.stockShareValueLabel());
         assertEquals(List.of(), result.instruments());
     }
 
@@ -120,9 +124,9 @@ class PortfolioServiceTest {
         var result = portfolioService.getPortfolio(7L);
 
         // ASSERT
-        assertEquals(new BigDecimal("375"), result.availableCash());
+        assertEquals(new BigDecimal("375.00"), result.availableCash());
         assertEquals(BigDecimal.ZERO, result.onHoldCash());
-        assertEquals(new BigDecimal("375"), result.totalAccountValue());
+        assertEquals(new BigDecimal("375.00"), result.totalAccountValue());
         assertEquals(List.of(), result.instruments());
     }
 
@@ -145,12 +149,18 @@ class PortfolioServiceTest {
         var result = portfolioService.getPortfolio(7L);
 
         // ASSERT
+        assertEquals("AR$", result.currency());
+        assertEquals("$1090.00", result.totalAccountValueLabel());
         assertEquals(new BigDecimal("950.00"), result.availableCash());
+        assertEquals("$950.00", result.availableCashLabel());
         assertEquals(new BigDecimal("20.00"), result.onHoldCash());
+        assertEquals("$20.00", result.onHoldCashLabel());
         assertEquals(new BigDecimal("1090.00"), result.totalAccountValue());
+        assertEquals("$120.00", result.stockShareValueLabel());
         assertEquals(1, result.instruments().size());
         assertEquals(1L, result.instruments().getFirst().size());
         assertEquals(new BigDecimal("120.00"), result.instruments().getFirst().marketValue());
+        assertEquals("$120.00", result.instruments().getFirst().marketValueLabel());
         assertEquals(new BigDecimal("20.0000"), result.instruments().getFirst().totalReturnPercent());
     }
 

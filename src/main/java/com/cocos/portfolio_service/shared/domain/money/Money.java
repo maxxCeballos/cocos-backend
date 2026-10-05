@@ -8,6 +8,8 @@ public sealed interface Money permits Money.ARS, Money.USD {
     BigDecimal value();
 
     record ARS(BigDecimal value) implements Money {
+        public static final String CURRENCY_LABEL = "AR$";
+
         public ARS {
             if (value == null) throw new IllegalArgumentException("El valor no puede ser nulo");
         }

@@ -4,6 +4,7 @@ import com.cocos.portfolio_service.marketdata.domain.MarketData;
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.enums.OrderSide;
 import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
+import com.cocos.portfolio_service.shared.domain.money.Money;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -36,8 +37,8 @@ class ReturnService {
 
         Map<Integer, List<Order>> ordersByMarketDataIndex = new HashMap<>();
         Map<Integer, Long> sizeChangesByMarketDataIndex = new HashMap<>();
-        BigDecimal totalBuyAmount = BigDecimal.ZERO;
-        BigDecimal profitAndLoss = BigDecimal.ZERO;
+        Money.ARS totalBuyAmount = new Money.ARS(BigDecimal.ZERO);
+        Money.ARS profitAndLoss = new Money.ARS(BigDecimal.ZERO);
         long positionSize = 0;
 
         for (Order order : instrumentOrders) {
@@ -49,14 +50,15 @@ class ReturnService {
             }
 
             boolean isBuy = order.side() == OrderSide.BUY;
-            if (isBuy) totalBuyAmount = totalBuyAmount.add(order.orderValue());
+            Money.ARS orderValue = new Money.ARS(order.price()).multiply(BigDecimal.valueOf(order.size()));
+            if (isBuy) totalBuyAmount = totalBuyAmount.add(orderValue);
 
             LocalDate orderDate = order.datetime().toLocalDate();
             if (orderDate.isBefore(firstMarketData.date())) {
                 positionSize += isBuy ? order.size() : -order.size();
-                profitAndLoss = profitAndLoss.add(isBuy
-                        ? order.orderValue().negate()
-                        : order.orderValue());
+                profitAndLoss = isBuy
+                        ? profitAndLoss.subtract(orderValue)
+                        : profitAndLoss.add(orderValue);
                 continue;
             }
 
@@ -69,10 +71,10 @@ class ReturnService {
                     isBuy ? order.size() : -order.size(), Long::sum);
         }
 
-        if (totalBuyAmount.signum() == 0) return BigDecimal.ZERO.setScale(4);
+        if (totalBuyAmount.value().signum() == 0) return BigDecimal.ZERO.setScale(4);
 
         profitAndLoss = profitAndLoss.add(
-                firstMarketData.previousClose().multiply(BigDecimal.valueOf(positionSize)));
+                new Money.ARS(firstMarketData.previousClose()).multiply(BigDecimal.valueOf(positionSize)));
         for (int i = 0; i < orderedMarketData.size(); i++) {
             MarketData dailyMarketData = orderedMarketData.get(i);
             profitAndLoss = profitAndLoss.add(calculateDailyProfitAndLoss(
@@ -80,20 +82,21 @@ class ReturnService {
             positionSize += sizeChangesByMarketDataIndex.getOrDefault(i, 0L);
         }
 
-        return profitAndLoss.divide(totalBuyAmount, MathContext.DECIMAL128)
+        return profitAndLoss.value().divide(totalBuyAmount.value(), MathContext.DECIMAL128)
                 .multiply(BigDecimal.valueOf(100))
                 .setScale(4, RoundingMode.HALF_UP);
     }
 
-    private static BigDecimal calculateDailyProfitAndLoss(MarketData marketData, long positionSize,
-                                                          List<Order> dailyOrders) {
-        BigDecimal profitAndLoss = marketData.close().subtract(marketData.previousClose())
+    private static Money.ARS calculateDailyProfitAndLoss(MarketData marketData, long positionSize,
+                                                         List<Order> dailyOrders) {
+        Money.ARS close = new Money.ARS(marketData.close());
+        Money.ARS profitAndLoss = close.subtract(new Money.ARS(marketData.previousClose()))
                 .multiply(BigDecimal.valueOf(positionSize));
 
         for (Order order : dailyOrders) {
-            BigDecimal tradePriceChange = order.side() == OrderSide.BUY
-                    ? marketData.close().subtract(order.price())
-                    : order.price().subtract(marketData.close());
+            Money.ARS tradePriceChange = order.side() == OrderSide.BUY
+                    ? close.subtract(new Money.ARS(order.price()))
+                    : new Money.ARS(order.price()).subtract(close);
             profitAndLoss = profitAndLoss.add(tradePriceChange.multiply(BigDecimal.valueOf(order.size())));
         }
 

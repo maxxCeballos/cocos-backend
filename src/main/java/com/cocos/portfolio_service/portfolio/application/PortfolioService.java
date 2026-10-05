@@ -10,6 +10,7 @@ import com.cocos.portfolio_service.order.domain.enums.OrderSide;
 import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
 import com.cocos.portfolio_service.portfolio.domain.Portfolio;
 import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
+import com.cocos.portfolio_service.shared.domain.money.Money;
 import com.cocos.portfolio_service.user.domain.User;
 import com.cocos.portfolio_service.user.domain.UserRepository;
 import org.springframework.stereotype.Service;
@@ -43,15 +44,20 @@ class PortfolioService implements IPortfolioService {
     public Portfolio getPortfolio(Long userId) {
         PortfolioContext context = buildContext(userId);
 
-        BigDecimal availableCash = calculateAvailableCash(context.orders());
-        BigDecimal onHoldCash = calculateOnHoldCash(context.orders());
-        BigDecimal totalStockShareValue = calculateTotalStockShareValue(context.orders(), context.marketsData());
+        Money.ARS availableCash = calculateAvailableCash(context.orders());
+        Money.ARS onHoldCash = calculateOnHoldCash(context.orders());
+        Money.ARS totalStockShareValue = calculateTotalStockShareValue(context.orders(), context.marketsData());
 
-        BigDecimal totalAccountValue = availableCash.add(onHoldCash).add(totalStockShareValue);
+        Money.ARS totalAccountValue = availableCash.add(onHoldCash).add(totalStockShareValue);
         List<Portfolio.Instrument> instrumentInfoAggregated = aggregateInstrumentInfo(context.orders(), context.marketsData(), context.instruments());
 
-        return new Portfolio("AR$", totalAccountValue, availableCash, onHoldCash,
-                totalStockShareValue, instrumentInfoAggregated);
+        return new Portfolio(
+                Money.ARS.CURRENCY_LABEL,
+                totalAccountValue.value(), totalAccountValue.toString(),
+                availableCash.value(), availableCash.toString(),
+                onHoldCash.value(), onHoldCash.toString(),
+                totalStockShareValue.value(), totalStockShareValue.toString(),
+                instrumentInfoAggregated);
     }
 
     private PortfolioContext buildContext(Long userId) {
@@ -93,8 +99,8 @@ class PortfolioService implements IPortfolioService {
     }
 
     // STOCK SHARE: ✅
-    private BigDecimal calculateTotalStockShareValue(List<Order> orders, List<MarketData> marketsData) {
-        BigDecimal totalStockShareValue = BigDecimal.ZERO;
+    private Money.ARS calculateTotalStockShareValue(List<Order> orders, List<MarketData> marketsData) {
+        Money.ARS totalStockShareValue = new Money.ARS(BigDecimal.ZERO);
 
         List<Order> ordersToCalculate = orders.stream().filter(order -> order.toShareSwapped() || order.toCashSwapped()).toList();
         Map<Long, MarketData> instrumentToMarketdataMap = getLastInstrumentMarketData(marketsData);
@@ -103,7 +109,8 @@ class PortfolioService implements IPortfolioService {
 
         for (Map.Entry<Long, Long> instrumentCant : instrumentToCantMap.entrySet()) {
             MarketData instMarketdata = instrumentToMarketdataMap.get(instrumentCant.getKey());
-            BigDecimal totalInstrumentValue = instMarketdata.close().multiply(BigDecimal.valueOf(instrumentCant.getValue()));
+            Money.ARS totalInstrumentValue = new Money.ARS(instMarketdata.close())
+                    .multiply(BigDecimal.valueOf(instrumentCant.getValue()));
             totalStockShareValue = totalStockShareValue.add(totalInstrumentValue);
         }
 
@@ -111,15 +118,16 @@ class PortfolioService implements IPortfolioService {
     }
 
     // CASH: ✅
-    private BigDecimal calculateAvailableCash(List<Order> orders) {
-        BigDecimal cash = BigDecimal.ZERO;
+    private Money.ARS calculateAvailableCash(List<Order> orders) {
+        Money.ARS cash = new Money.ARS(BigDecimal.ZERO);
 
         List<Order> ordersToCalculate = orders.stream()
                 .filter(order -> !order.isShareOnHold() && !order.isCashOnHold())
                 .toList();
 
         for (Order order: ordersToCalculate) {
-            BigDecimal valueToOperate = order.orderValue();
+            Money.ARS valueToOperate = new Money.ARS(order.price())
+                    .multiply(BigDecimal.valueOf(order.size()));
 
             if(order.isCashIn() || order.toCashSwapped()) {
                 cash = cash.add(valueToOperate);
@@ -133,11 +141,11 @@ class PortfolioService implements IPortfolioService {
     }
 
     // ON-HOLD-CASH: ✅
-    private BigDecimal calculateOnHoldCash(List<Order> orders) {
+    private Money.ARS calculateOnHoldCash(List<Order> orders) {
         return orders.stream()
                 .filter(Order::isCashOnHold)
-                .map(Order::orderValue)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .map(order -> new Money.ARS(order.price()).multiply(BigDecimal.valueOf(order.size())))
+                .reduce(new Money.ARS(BigDecimal.ZERO), Money.ARS::add);
     }
 
     private List<Portfolio.Instrument> aggregateInstrumentInfo(List<Order> orders, List<MarketData> marketsData, List<Instrument> instruments) {
@@ -165,12 +173,14 @@ class PortfolioService implements IPortfolioService {
                     .filter(order -> Objects.equals(order.instrumentId(), instrumentId))
                     .toList();
 
+            Money.ARS marketValue = new Money.ARS(marketData.close()).multiply(BigDecimal.valueOf(size));
             instrumentInfoAggregated.add(new Portfolio.Instrument(
                     instrumentId,
                     instrument.ticker(),
                     instrument.name(),
                     size,
-                    marketData.close().multiply(BigDecimal.valueOf(size)),
+                    marketValue.value(),
+                    marketValue.toString(),
                     returnService.calculateDailyPositionReturn(instrumentMarketData, instrumentOrders)
             ));
         }
