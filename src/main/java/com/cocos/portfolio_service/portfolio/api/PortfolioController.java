@@ -10,10 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Positive;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Validated
 @RestController
@@ -28,7 +25,7 @@ class PortfolioController {
         this.portfolioMapper = portfolioMapper;
     }
 
-    @GetMapping("/users/{userId}")
+    @GetMapping("/users")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Portfolio returned successfully",
                     content = @Content(schema = @Schema(implementation = PortfolioResponse.class))),
@@ -39,7 +36,7 @@ class PortfolioController {
             @ApiResponse(responseCode = "500", description = "Unexpected server error",
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     })
-    public PortfolioResponse getPortfolio(@PathVariable @Positive Long userId) {
+    public PortfolioResponse getPortfolio(@RequestHeader("X-User-Id") @Positive Long userId) {
         return portfolioMapper.toResponse(portfolioService.getPortfolio(userId));
     }
 }
