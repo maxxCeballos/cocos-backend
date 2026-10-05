@@ -1,6 +1,7 @@
 package com.cocos.portfolio_service.order.application;
 
 import com.cocos.portfolio_service.order.application.ports.IOrderService;
+import com.cocos.portfolio_service.order.application.side_strategy.SideStrategy;
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.OrderToSubmit;
 import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
@@ -15,9 +16,9 @@ import java.util.Optional;
 @Service
 class OrderService implements IOrderService {
     private final UserRepository userRepository;
-    private final Map<String, SubmitStrategy> strategies;
+    private final Map<String, SideStrategy> strategies;
 
-    OrderService(UserRepository userRepository, Map<String, SubmitStrategy> strategies) {
+    OrderService(UserRepository userRepository, Map<String, SideStrategy> strategies) {
         this.userRepository = userRepository;
         this.strategies = strategies;
     }
@@ -29,10 +30,16 @@ class OrderService implements IOrderService {
         Optional<User> userOpt = userRepository.findById(userId);
         if(userOpt.isEmpty()) throw new UserNotFoundException(userId);
 
-        SubmitStrategy strategy = strategies.get(order.type().toString());
+        SideStrategy strategy = strategies.get(order.side().toString());
+        String lockKey = "lock:user:" + userId;
 
-        Order orderSaved = strategy.sumbit(order);
+        try {
+            // TODO: acquire lock
+            Order orderSaved = strategy.submit(userId, order);
+            return orderSaved;
 
-        return orderSaved;
+        } finally {
+            // TODO: release lock
+        }
     }
 }
