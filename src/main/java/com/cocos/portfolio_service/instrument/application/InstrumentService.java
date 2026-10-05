@@ -5,8 +5,11 @@ import com.cocos.portfolio_service.instrument.domain.InstrumentSearchCacheEntry;
 import com.cocos.portfolio_service.instrument.domain.InstrumentSearchResult;
 import com.cocos.portfolio_service.instrument.domain.errors.InstrumentNotFoundException;
 import com.cocos.portfolio_service.instrument.domain.errors.InvalidInstrumentSearchQueryException;
+import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
 import com.cocos.portfolio_service.shared.infrastructure.cache.SharedListCache;
 import com.cocos.portfolio_service.shared.domain.errors.ValkeyUnavailableException;
+import com.cocos.portfolio_service.user.domain.User;
+import com.cocos.portfolio_service.user.domain.UserRepository;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
 import org.slf4j.Logger;
@@ -15,21 +18,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 class InstrumentService implements IInstrument {
     private static final Logger logger = LoggerFactory.getLogger(InstrumentService.class);
     private static final String CACHE_KEY_PREFIX = "instrument:search:";
 
+    private final UserRepository userRepository;
     private final InstrumentRepository instrumentRepository;
     private final SharedListCache cache;
     private final JsonMapper jsonMapper;
 
-    InstrumentService(InstrumentRepository instrumentRepository, SharedListCache cache, JsonMapper jsonMapper) {
+    InstrumentService(UserRepository userRepository, InstrumentRepository instrumentRepository, SharedListCache cache, JsonMapper jsonMapper) {
+        this.userRepository = userRepository;
         this.instrumentRepository = instrumentRepository;
         this.cache = cache;
         this.jsonMapper = jsonMapper;
@@ -37,6 +39,9 @@ class InstrumentService implements IInstrument {
 
     @Override
     public InstrumentSearchResult search(Long userId, Long instrumentId, String query, int page, int size) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if(userOpt.isEmpty()) throw new UserNotFoundException(userId);
+
         Pageable pageable = PageRequest.of(page, size);
 
         if (instrumentId != null) {

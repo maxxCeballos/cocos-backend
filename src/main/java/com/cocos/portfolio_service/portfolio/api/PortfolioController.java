@@ -5,6 +5,8 @@ import com.cocos.portfolio_service.portfolio.utils.mappers.PortfolioMapper;
 import com.cocos.portfolio_service.shared.api.ApiErrorResponse;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,6 +28,7 @@ class PortfolioController {
     }
 
     @GetMapping("/users")
+    @Operation(summary = "Get user portfolio", description = "Returns the account values and instrument positions for the user identified by X-User-Id.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Portfolio returned successfully",
                     content = @Content(schema = @Schema(implementation = PortfolioResponse.class))),
@@ -36,7 +39,9 @@ class PortfolioController {
             @ApiResponse(responseCode = "500", description = "Unexpected server error",
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     })
-    public PortfolioResponse getPortfolio(@RequestHeader("X-User-Id") @Positive Long userId) {
+    public PortfolioResponse getPortfolio(
+            @Parameter(description = "Positive ID of the user", required = true, example = "1")
+            @RequestHeader("X-User-Id") @Positive Long userId) {
         return portfolioMapper.toResponse(portfolioService.getPortfolio(userId));
     }
 }
