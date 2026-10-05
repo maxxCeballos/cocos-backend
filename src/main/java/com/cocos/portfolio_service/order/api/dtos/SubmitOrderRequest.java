@@ -11,7 +11,6 @@ public record SubmitOrderRequest(
         @NotNull @Positive Long instrumentId,
         @NotNull OrderSide side,
         @NotNull OrderType type,
-        @Positive Long quantity,
-        @Positive BigDecimal amount,
+        @Positive Long size,
         @Positive BigDecimal price) {
 }

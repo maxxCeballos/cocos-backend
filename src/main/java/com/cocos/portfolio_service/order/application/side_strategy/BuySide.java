@@ -1,5 +1,6 @@
 package com.cocos.portfolio_service.order.application.side_strategy;
 
+import com.cocos.portfolio_service.order.application.OrderContext;
 import com.cocos.portfolio_service.order.application.ports.OrderRepository;
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.OrderToSubmit;
@@ -14,7 +15,7 @@ public class BuySide implements SideStrategy {
         this.orderRepository = orderRepository;
     }
 
-    public Order submit(Long userId, OrderToSubmit orderToSubmit) {
+    public Order submit(OrderContext context, OrderToSubmit orderToSubmit) {
         System.out.printf("ORDEN EXECUTADA POR BUY");
 
         return null;

@@ -9,7 +9,6 @@ public record OrderToSubmit(
         Long instrumentId,
         OrderSide side,
         OrderType type,
-        Long quantity,
-        BigDecimal amount,
+        Long size,
         BigDecimal price) {
 }

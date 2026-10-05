@@ -16,7 +16,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 class InstrumentService implements IInstrument {
@@ -57,7 +59,7 @@ class InstrumentService implements IInstrument {
         String cacheKey = cacheKey(userId);
         try {
             String value = jsonMapper.writeValueAsString(InstrumentSearchCacheEntry.from(instrument));
-            cache.append(cacheKey, value);
+            cache.upsertById(cacheKey, instrumentId, value);
         } catch (JacksonException exception) {
             logger.error("Unable to serialize instrument cache entry for key {}", cacheKey, exception);
             throw new ValkeyUnavailableException("Unable to write instrument to Valkey cache", exception);
@@ -70,14 +72,14 @@ class InstrumentService implements IInstrument {
     private InstrumentSearchResult searchCachedInstruments(Long userId, Pageable pageable) {
         String cacheKey = cacheKey(userId);
         try {
-            Long cachedSize = cache.size(cacheKey);
-            long totalElements = cachedSize == null ? 0 : cachedSize;
-            long start = pageable.getOffset();
-            long end = start + pageable.getPageSize() - 1L;
-            List<Instrument> instruments = readCacheEntries(cache.range(cacheKey, start, end));
+            List<Instrument> instruments = readUniqueCacheEntries(cache.range(cacheKey, 0, -1));
+            long totalElements = instruments.size();
             int totalPages = totalElements == 0 ? 0
                     : (int) ((totalElements + pageable.getPageSize() - 1) / pageable.getPageSize());
-            return new InstrumentSearchResult(instruments, pageable.getPageNumber(), pageable.getPageSize(),
+            int start = (int) Math.min(pageable.getOffset(), totalElements);
+            int end = (int) Math.min((long) start + pageable.getPageSize(), totalElements);
+            List<Instrument> content = new ArrayList<>(instruments.subList(start, end));
+            return new InstrumentSearchResult(content, pageable.getPageNumber(), pageable.getPageSize(),
                     totalElements, totalPages);
         } catch (JacksonException exception) {
             logger.error("Unable to deserialize instrument cache entry for key {}", cacheKey, exception);
@@ -85,12 +87,13 @@ class InstrumentService implements IInstrument {
         }
     }
 
-    private List<Instrument> readCacheEntries(List<String> values) throws JacksonException {
-        List<Instrument> instruments = new ArrayList<>(values.size());
+    private List<Instrument> readUniqueCacheEntries(List<String> values) throws JacksonException {
+        Map<Long, Instrument> instrumentsById = new LinkedHashMap<>();
         for (String value : values) {
-            instruments.add(jsonMapper.readValue(value, InstrumentSearchCacheEntry.class).toInstrument());
+            Instrument instrument = jsonMapper.readValue(value, InstrumentSearchCacheEntry.class).toInstrument();
+            instrumentsById.putIfAbsent(instrument.id(), instrument);
         }
-        return instruments;
+        return new ArrayList<>(instrumentsById.values());
     }
 
     private InstrumentSearchResult toSearchResult(org.springframework.data.domain.Page<Instrument> result) {

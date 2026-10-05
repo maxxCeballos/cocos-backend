@@ -6,7 +6,6 @@ import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
 import java.util.List;
 
 public interface OrderRepository {
-    List<Order> findByUserIdAndStatus(Long userId, OrderStatus status);
     List<Order> findEffectiveOrdersByUserId(Long userId);
     Order save(Order order);
 }
