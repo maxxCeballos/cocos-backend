@@ -18,8 +18,6 @@ import java.time.LocalDateTime;
 @Service("BUY")
 public class BuySide implements SideStrategy {
 
-    public BuySide() {}
-
     public Order submit(OrderContext context, OrderToSubmit orderToSubmit) {
         Long instrumentId = orderToSubmit.instrumentId();
         OrderStatus status = orderToSubmit.type().equals(OrderType.MARKET) ? OrderStatus.FILLED : OrderStatus.NEW;
@@ -30,6 +28,7 @@ public class BuySide implements SideStrategy {
             moneyToInvestByUnit = orderToSubmit.price();
         }
 
+        // SIZE tiene prioridad por sobre budget
         if(size > 0) {
             if(!hasEnoughMoneyBySize(context.availableCash(), orderToSubmit.size(), moneyToInvestByUnit)) {
                 log.error("no hay suficiente dinero disponible de userId: {} para la compra del instrumento: {}", context.user().id(), instrumentId);
