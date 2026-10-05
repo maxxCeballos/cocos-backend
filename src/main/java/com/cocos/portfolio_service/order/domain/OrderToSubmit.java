@@ -10,5 +10,5 @@ public record OrderToSubmit(
         OrderSide side,
         OrderType type,
         Long size,
-        BigDecimal price) {
+        BigDecimal budget) {
 }

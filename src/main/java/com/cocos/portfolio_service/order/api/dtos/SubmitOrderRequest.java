@@ -12,5 +12,5 @@ public record SubmitOrderRequest(
         @NotNull OrderSide side,
         @NotNull OrderType type,
         @Positive Long size,
-        @Positive BigDecimal price) {
+        @Positive BigDecimal budget) {
 }

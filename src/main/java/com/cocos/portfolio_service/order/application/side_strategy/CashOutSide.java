@@ -25,9 +25,6 @@ public class CashOutSide implements SideStrategy {
         if (orderToSubmit.type() != OrderType.MARKET) {
             throw new InvalidOrderException("Cash-out orders must use MARKET type");
         }
-        if (orderToSubmit.price().compareTo(CASH_OUT_PRICE) != 0) {
-            throw new InvalidOrderException("Cash-out order price must be 1");
-        }
         if (!InstrumentType.MONEDA.equals(context.instrument().type())) {
             throw new InvalidOrderException("Cash-out orders require a MONEDA instrument");
         }

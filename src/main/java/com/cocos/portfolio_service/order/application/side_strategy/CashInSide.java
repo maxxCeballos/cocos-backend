@@ -22,9 +22,6 @@ public class CashInSide implements SideStrategy {
         if (orderToSubmit.type() != OrderType.MARKET) {
             throw new InvalidOrderException("Cash-in orders must use MARKET type");
         }
-        if (orderToSubmit.price().compareTo(CASH_IN_PRICE) != 0) {
-            throw new InvalidOrderException("Cash-in order price must be 1");
-        }
         if (!InstrumentType.MONEDA.equals(context.instrument().type())) {
             throw new InvalidOrderException("Cash-in orders require a MONEDA instrument");
         }

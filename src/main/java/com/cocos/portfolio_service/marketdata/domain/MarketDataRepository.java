@@ -5,5 +5,5 @@ import java.util.Optional;
 
 public interface MarketDataRepository {
     Optional<MarketData> findLatestByInstrumentId(Long instrumentId);
-    List<MarketData> findAllById(List<Long> instrumentIds);
+    List<MarketData> findAllByInstrumentId(List<Long> instrumentIds);
 }

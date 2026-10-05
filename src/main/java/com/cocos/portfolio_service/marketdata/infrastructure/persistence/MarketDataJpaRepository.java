@@ -7,13 +7,19 @@ import java.util.List;
 import java.util.Optional;
 
 public interface MarketDataJpaRepository extends JpaRepository<MarketDataEntity, Long> {
-    Optional<MarketDataEntity> findByInstrumentId(Long instrumentId);
 
-    @Query(
-        """
+    @Query("""
+            SELECT m 
+            FROM MarketDataEntity m
+            WHERE m.instrumentId = :instrumentId
+            ORDER BY date DESC LIMIT 1
+        """)
+    Optional<MarketDataEntity> findLatestByInstrumentId(Long instrumentId);
+
+    @Query("""
             SELECT m
             FROM MarketDataEntity m
             WHERE m.instrumentId IN :instrumentIds
         """)
-    List<MarketDataEntity> findCurrentMarketDataByInstrumentId(List<Long> instrumentIds);
+    List<MarketDataEntity> findAllByInstrumentId(List<Long> instrumentIds);
 }

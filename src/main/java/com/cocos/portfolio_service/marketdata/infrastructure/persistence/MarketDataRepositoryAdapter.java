@@ -20,13 +20,13 @@ public class MarketDataRepositoryAdapter implements MarketDataRepository {
 
     @Override
     public Optional<MarketData> findLatestByInstrumentId(Long instrumentId) {
-        return repository.findByInstrumentId(instrumentId)
+        return repository.findLatestByInstrumentId(instrumentId)
                 .map(entity -> new MarketData(entity.getId(), entity.getInstrumentId(), entity.getClose(),
                         entity.getPreviousClose(), entity.getDate()));
     }
 
-    public List<MarketData> findAllById(List<Long> instrumentIds) {
-        List<MarketDataEntity> marketDataDB = repository.findCurrentMarketDataByInstrumentId(instrumentIds);
+    public List<MarketData> findAllByInstrumentId(List<Long> instrumentIds) {
+        List<MarketDataEntity> marketDataDB = repository.findAllByInstrumentId(instrumentIds);
         return marketDataDB.stream().map(marketDataMapper::toMarketDataDomain).toList();
     }
 }

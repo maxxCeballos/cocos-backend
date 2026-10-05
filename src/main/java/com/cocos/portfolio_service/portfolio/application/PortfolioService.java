@@ -83,7 +83,7 @@ class PortfolioService implements IPortfolioService {
         CompletableFuture<List<Instrument>> instrumentsFuture = CompletableFuture.supplyAsync(
                 () -> instrumentRepository.findAllById(instrumentIds));
         CompletableFuture<List<MarketData>> marketsDataFuture = CompletableFuture.supplyAsync(
-                () -> marketDataRepository.findAllById(instrumentIds));
+                () -> marketDataRepository.findAllByInstrumentId(instrumentIds));
         awaitAll(instrumentsFuture, marketsDataFuture);
 
         List<Instrument> instruments = instrumentsFuture.join();

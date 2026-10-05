@@ -74,10 +74,10 @@ class PortfolioServiceTest {
         when(orderRepository.findEffectiveOrdersByUserId(7L)).thenReturn(List.of());
         when(instrumentRepository.findAllById(anyList()))
                 .thenThrow(new IllegalStateException("instrument lookup failed"));
-        when(marketDataRepository.findAllById(anyList())).thenReturn(List.of());
+        when(marketDataRepository.findAllByInstrumentId(anyList())).thenReturn(List.of());
 
         assertThrows(IllegalStateException.class, () -> portfolioService.getPortfolio(7L));
-        verify(marketDataRepository).findAllById(List.of());
+        verify(marketDataRepository).findAllByInstrumentId(List.of());
     }
 
     @Test
@@ -85,7 +85,7 @@ class PortfolioServiceTest {
         when(userRepository.findById(7L)).thenReturn(Optional.of(user()));
         when(orderRepository.findEffectiveOrdersByUserId(7L)).thenReturn(List.of());
         when(instrumentRepository.findAllById(anyList())).thenReturn(List.of());
-        when(marketDataRepository.findAllById(anyList()))
+        when(marketDataRepository.findAllByInstrumentId(anyList()))
                 .thenThrow(new IllegalStateException("market data lookup failed"));
 
         assertThrows(IllegalStateException.class, () -> portfolioService.getPortfolio(7L));
@@ -140,7 +140,7 @@ class PortfolioServiceTest {
                 order(OrderSide.SELL, 1L, 3L, "150.00"),
                 order(OrderSide.BUY, 2L, 3L, "10.00", OrderStatus.NEW)));
         when(instrumentRepository.findAllById(anyList())).thenReturn(List.of(instrument()));
-        when(marketDataRepository.findAllById(anyList())).thenReturn(List.of(
+        when(marketDataRepository.findAllByInstrumentId(anyList())).thenReturn(List.of(
                 new MarketData(1L, 3L, new BigDecimal("120.00"), new BigDecimal("100.00"), LocalDate.now())));
         when(returnService.calculateDailyPositionReturn(anyList(), anyList()))
                 .thenReturn(new BigDecimal("20.0000"));
@@ -171,7 +171,7 @@ class PortfolioServiceTest {
         when(orderRepository.findEffectiveOrdersByUserId(7L))
                 .thenReturn(List.of(order(OrderSide.BUY, 2L, 3L, "100.00")));
         when(instrumentRepository.findAllById(anyList())).thenReturn(List.of(instrument()));
-        when(marketDataRepository.findAllById(anyList())).thenReturn(List.of());
+        when(marketDataRepository.findAllByInstrumentId(anyList())).thenReturn(List.of());
 
         // ACT & ASSERT
         assertThrows(MarketDataNotFoundException.class, () -> portfolioService.getPortfolio(7L));
