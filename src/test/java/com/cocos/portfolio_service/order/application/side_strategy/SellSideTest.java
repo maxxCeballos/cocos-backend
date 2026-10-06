@@ -25,7 +25,7 @@ class SellSideTest {
                 order(OrderSide.SELL, 3L, OrderStatus.FILLED),
                 order(OrderSide.SELL, 4L, OrderStatus.NEW));
 
-        assertEquals(8L, sellSide.calculateInstrumentPossessions(orders));
+        assertEquals(8L, sellSide.calculateInstrumentPossessions(orders, 3L));
     }
 
     @Test
@@ -34,11 +34,26 @@ class SellSideTest {
                 order(OrderSide.SELL, 3L, OrderStatus.FILLED),
                 order(OrderSide.SELL, 2L, OrderStatus.NEW));
 
-        assertEquals(-5L, sellSide.calculateInstrumentPossessions(orders));
+        assertEquals(-5L, sellSide.calculateInstrumentPossessions(orders, 3L));
+    }
+
+    @Test
+    void calculateInstrumentPossessions_ignoresOrdersForOtherInstruments() {
+        var orders = List.of(
+                order(OrderSide.BUY, 10L, OrderStatus.FILLED, 3L),
+                order(OrderSide.SELL, 4L, OrderStatus.NEW, 3L),
+                order(OrderSide.BUY, 100L, OrderStatus.FILLED, 4L),
+                order(OrderSide.SELL, 50L, OrderStatus.FILLED, 4L));
+
+        assertEquals(6L, sellSide.calculateInstrumentPossessions(orders, 3L));
     }
 
     private Order order(OrderSide side, long size, OrderStatus status) {
-        return new Order(1L, 7L, 3L, side, size, BigDecimal.ONE, OrderType.MARKET,
+        return order(side, size, status, 3L);
+    }
+
+    private Order order(OrderSide side, long size, OrderStatus status, long instrumentId) {
+        return new Order(1L, 7L, instrumentId, side, size, BigDecimal.ONE, OrderType.MARKET,
                 status, LocalDateTime.of(2023, 7, 13, 12, 0));
     }
 }

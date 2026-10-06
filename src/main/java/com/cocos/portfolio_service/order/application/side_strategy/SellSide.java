@@ -40,7 +40,7 @@ public class SellSide implements SideStrategy {
             moneyToSellByUnit = orderToSubmit.price();
         }
 
-        Long cantInstruments = calculateInstrumentPossessions(context.orders());
+        Long cantInstruments = calculateInstrumentPossessions(context.orders(), instrumentId);
         if(size > cantInstruments) {
             log.error("la cantidad a vender excede la cantidad disponible userId: {} instrumentId: {}", context.user().id(), instrumentId);
             status = OrderStatus.REJECTED;
@@ -59,10 +59,16 @@ public class SellSide implements SideStrategy {
                 LocalDateTime.now());
     }
 
-    Long calculateInstrumentPossessions(List<Order> orders) {
-        return orders.stream()
-                .filter(order -> order.toShareSwapped() || order.toCashSwapped() || order.isShareOnHold())
-                .mapToLong(order -> order.toShareSwapped() ? order.size() : -order.size())
-                .sum();
+    Long calculateInstrumentPossessions(List<Order> orders, Long instrumentId) {
+        long possessions = 0;
+        for (Order order : orders) {
+            if (!instrumentId.equals(order.instrumentId())) continue;
+            if (order.toShareSwapped()) {
+                possessions += order.size();
+            } else if (order.toCashSwapped() || order.isShareOnHold()) {
+                possessions -= order.size();
+            }
+        }
+        return possessions;
     }
 }
