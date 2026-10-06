@@ -13,6 +13,7 @@ import com.cocos.portfolio_service.order.domain.OrderToSubmit;
 import com.cocos.portfolio_service.order.domain.enums.OrderSide;
 import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
 import com.cocos.portfolio_service.order.domain.enums.OrderType;
+import com.cocos.portfolio_service.order.domain.errors.InvalidOrderException;
 import com.cocos.portfolio_service.user.domain.UserRepository;
 import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
 import com.cocos.portfolio_service.shared.domain.money.Money;
@@ -107,6 +108,13 @@ class OrderServiceTest {
         // ASSERT
         assertEquals(2L, result.size());
         assertEquals(OrderStatus.FILLED, result.status());
+    }
+
+    @Test
+    void whenBuyHasNoSizeAndNoBudget_thenSubmit_throwsInvalidOrder() {
+        var command = command(OrderSide.BUY, OrderType.MARKET, 0L, BigDecimal.ZERO, null);
+
+        assertThrows(InvalidOrderException.class, () -> orderService.submit(7L, command));
     }
 
     @Test

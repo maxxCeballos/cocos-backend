@@ -9,6 +9,7 @@ import com.cocos.portfolio_service.order.domain.OrderToSubmit;
 import com.cocos.portfolio_service.order.domain.enums.OrderSide;
 import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
 import com.cocos.portfolio_service.order.domain.enums.OrderType;
+import com.cocos.portfolio_service.order.domain.errors.InvalidOrderException;
 import com.cocos.portfolio_service.shared.domain.money.Money;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ public class BuySide implements SideStrategy {
         Long instrumentId = orderToSubmit.instrumentId();
         OrderStatus status = orderToSubmit.type().equals(OrderType.MARKET) ? OrderStatus.FILLED : OrderStatus.NEW;
         Long size = orderToSubmit.size();
+        Money.ARS budget= orderToSubmit.budget();
 
         Optional<MarketData> marketDataOpt = marketDataRepository.findLatestByInstrumentId(instrumentId);
         if(marketDataOpt.isEmpty()) throw new MarketDataNotFoundException(instrumentId);
@@ -41,6 +43,10 @@ public class BuySide implements SideStrategy {
             moneyToInvestByUnit = orderToSubmit.price();
         }
 
+        if(size == 0 && budget.value().compareTo(BigDecimal.ZERO) == 0) {
+            throw new InvalidOrderException("Debe ingresar size o budget para ingresar una Order de compra");
+        }
+
         // SIZE tiene prioridad por sobre budget
         if(size > 0) {
             if(!hasEnoughMoneyBySize(context.availableCash(), orderToSubmit.size(), moneyToInvestByUnit)) {
@@ -48,7 +54,7 @@ public class BuySide implements SideStrategy {
                 status = OrderStatus.REJECTED;
             }
         } else {
-            size = buyByBudget(context.availableCash(), orderToSubmit.budget(), moneyToInvestByUnit);
+            size = buyByBudget(context.availableCash(), budget, moneyToInvestByUnit);
             if(size == -1) {
                 status = OrderStatus.REJECTED;
             }
