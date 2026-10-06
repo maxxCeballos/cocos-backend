@@ -9,6 +9,7 @@ import com.cocos.portfolio_service.order.domain.OrderToSubmit;
 import com.cocos.portfolio_service.order.domain.enums.OrderSide;
 import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
 import com.cocos.portfolio_service.order.domain.enums.OrderType;
+import com.cocos.portfolio_service.order.domain.errors.InvalidOrderException;
 import com.cocos.portfolio_service.shared.domain.money.Money;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class SellSide implements SideStrategy {
         Long instrumentId = context.instrument().id();
         OrderStatus status = orderToSubmit.type().equals(OrderType.MARKET) ? OrderStatus.FILLED : OrderStatus.NEW;
         Long size = orderToSubmit.size();
+        if(size == 0) throw new InvalidOrderException("La cantidad de instrumentos a vender debe ser mayor a 0");
 
         Optional<MarketData> marketDataOpt = marketDataRepository.findLatestByInstrumentId(instrumentId);
         if(marketDataOpt.isEmpty()) throw new MarketDataNotFoundException(instrumentId);

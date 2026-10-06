@@ -36,6 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
 
@@ -167,6 +168,16 @@ class OrderServiceTest {
 
         // ASSERT
         assertEquals(OrderStatus.REJECTED, result.status());
+    }
+
+    @Test
+    void whenSellHasZeroSizeAndNoHoldings_thenSubmit_doesNotSaveOrder() {
+        when(orderRepository.findEffectiveOrdersByUserId(7L)).thenReturn(List.of());
+
+        assertThrows(InvalidOrderException.class,
+                () -> orderService.submit(7L, command(OrderSide.SELL, OrderType.MARKET, 0L, null, null)));
+
+        verify(orderRepository, never()).save(any());
     }
 
     @Test
