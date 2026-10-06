@@ -2,18 +2,24 @@ package com.cocos.portfolio_service.portfolio.application;
 
 import com.cocos.portfolio_service.instrument.application.InstrumentRepository;
 import com.cocos.portfolio_service.instrument.domain.Instrument;
+import com.cocos.portfolio_service.instrument.domain.enums.InstrumentType;
 import com.cocos.portfolio_service.marketdata.domain.MarketData;
 import com.cocos.portfolio_service.marketdata.domain.MarketDataRepository;
 import com.cocos.portfolio_service.marketdata.domain.errors.MarketDataNotFoundException;
 import com.cocos.portfolio_service.order.application.ports.OrderRepository;
+import com.cocos.portfolio_service.order.application.OrderService;
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.enums.OrderSide;
 import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
 import com.cocos.portfolio_service.order.domain.enums.OrderType;
+import com.cocos.portfolio_service.portfolio.domain.Portfolio;
 import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
 import com.cocos.portfolio_service.user.domain.User;
 import com.cocos.portfolio_service.user.domain.UserRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -24,6 +30,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -38,7 +45,22 @@ class PortfolioServiceTest {
     @Mock private InstrumentRepository instrumentRepository;
     @Mock private MarketDataRepository marketDataRepository;
     @Mock private ReturnService returnService;
+    @Mock private OrderService orderService;
     @InjectMocks private PortfolioService portfolioService;
+
+    @BeforeEach
+    void calculateAvailableCashLikeOrderService() {
+        org.mockito.Mockito.lenient().when(orderService.calculateAvailableCash(anyList())).thenAnswer(invocation -> {
+            List<Order> orders = invocation.getArgument(0);
+            BigDecimal cash = BigDecimal.ZERO;
+            for (Order order : orders) {
+                if (order.isShareOnHold()) continue;
+                BigDecimal value = order.price().multiply(BigDecimal.valueOf(order.size()));
+                cash = order.isCashIn() || order.toCashSwapped() ? cash.add(value) : cash.subtract(value);
+            }
+            return new com.cocos.portfolio_service.shared.domain.money.Money.ARS(cash);
+        });
+    }
 
     @Test
     void whenUserDoesNotExist_thenGetPortfolio_throwsUserNotFound() {
@@ -110,6 +132,30 @@ class PortfolioServiceTest {
         assertEquals("$0.00", result.onHoldCashLabel());
         assertEquals("$0.00", result.stockShareValueLabel());
         assertEquals(List.of(), result.instruments());
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 3})
+    void getPortfolioAggregatesEmptySingleAndMultiplePositions(int positionCount) {
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user()));
+        List<Order> orders = IntStream.rangeClosed(1, positionCount)
+                .mapToObj(id -> order(OrderSide.BUY, 2L, id, "10.00"))
+                .toList();
+        when(orderRepository.findEffectiveOrdersByUserId(7L)).thenReturn(orders);
+        when(instrumentRepository.findAllById(anyList())).thenReturn(IntStream.rangeClosed(1, positionCount)
+                .mapToObj(id -> new Instrument((long) id, "T" + id, "Instrument " + id, InstrumentType.ACCIONES))
+                .toList());
+        when(marketDataRepository.findAllByInstrumentId(anyList())).thenReturn(IntStream.rangeClosed(1, positionCount)
+                .mapToObj(id -> new MarketData((long) id, (long) id, new BigDecimal("12.00"),
+                        new BigDecimal("10.00"), LocalDate.now()))
+                .toList());
+        org.mockito.Mockito.lenient().when(returnService.calculateDailyPositionReturn(anyList(), anyList()))
+                .thenReturn(BigDecimal.ZERO);
+
+        var portfolio = portfolioService.getPortfolio(7L);
+
+        assertEquals(positionCount, portfolio.instruments().size());
+        assertEquals(positionCount * 2, portfolio.instruments().stream().mapToLong(Portfolio.Instrument::size).sum());
     }
 
     @Test
@@ -192,6 +238,6 @@ class PortfolioServiceTest {
     }
 
     private Instrument instrument() {
-        return new Instrument(3L, "GGAL", "Grupo Galicia", "ACCIONES", null);
+        return new Instrument(3L, "GGAL", "Grupo Galicia", InstrumentType.ACCIONES);
     }
 }

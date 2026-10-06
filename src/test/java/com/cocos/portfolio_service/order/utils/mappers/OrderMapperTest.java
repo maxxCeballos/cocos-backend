@@ -21,7 +21,7 @@ class OrderMapperTest {
     @Test
     void mapsDecimalRequestBudgetToArsWithoutTruncatingFractionalPart() {
         SubmitOrderRequest request = new SubmitOrderRequest(3L, OrderSide.BUY, OrderType.LIMIT,
-                2L, new BigDecimal("150000.5"));
+                2L, BigDecimal.ZERO, new BigDecimal("150000.5"));
 
         var command = orderMapper.toOrderSubmit(request);
 

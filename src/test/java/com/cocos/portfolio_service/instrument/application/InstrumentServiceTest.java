@@ -2,7 +2,11 @@ package com.cocos.portfolio_service.instrument.application;
 
 import com.cocos.portfolio_service.instrument.domain.Instrument;
 import com.cocos.portfolio_service.instrument.domain.InstrumentSearchCacheEntry;
+import com.cocos.portfolio_service.instrument.domain.enums.InstrumentType;
+import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
 import com.cocos.portfolio_service.shared.infrastructure.cache.SharedListCache;
+import com.cocos.portfolio_service.user.domain.User;
+import com.cocos.portfolio_service.user.domain.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,18 +32,20 @@ class InstrumentServiceTest {
     private static final String CACHE_KEY = "instrument:search:7";
 
     @Mock private InstrumentRepository instrumentRepository;
+    @Mock private UserRepository userRepository;
     @Mock private SharedListCache cache;
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
     private InstrumentService instrumentService;
 
     @BeforeEach
     void setUp() {
-        instrumentService = new InstrumentService(instrumentRepository, cache, jsonMapper);
+        instrumentService = new InstrumentService(userRepository, instrumentRepository, cache, jsonMapper);
+        lenient().when(userRepository.findById(7L)).thenReturn(Optional.of(new User(7L, "test@example.com", "7")));
     }
 
     @Test
     void whenRepositoryFindsInstruments_thenSearch_returnsPageMetadataAndContent() {
-        var instruments = List.of(new Instrument(1L, "GGAL", "Grupo Galicia", "ACCIONES"));
+        var instruments = List.of(new Instrument(1L, "GGAL", "Grupo Galicia", InstrumentType.ACCIONES));
         when(instrumentRepository.search("gal", PageRequest.of(1, 5)))
                 .thenReturn(new PageImpl<>(instruments, PageRequest.of(1, 5), 6));
 
@@ -75,8 +82,8 @@ class InstrumentServiceTest {
 
     @Test
     void whenSameInstrumentIsSearchedTwice_thenCacheUsesAtomicUpsertById() throws Exception {
-        var first = new Instrument(27L, "GGAL", "Grupo Galicia", "ACCIONES");
-        var refreshed = new Instrument(27L, "GGAL", "Grupo Galicia actualizado", "ACCIONES");
+        var first = new Instrument(27L, "GGAL", "Grupo Galicia", InstrumentType.ACCIONES);
+        var refreshed = new Instrument(27L, "GGAL", "Grupo Galicia actualizado", InstrumentType.ACCIONES);
         when(instrumentRepository.findById(27L)).thenReturn(Optional.of(first), Optional.of(refreshed));
 
         instrumentService.search(7L, 27L, null, 0, 20);
@@ -154,5 +161,14 @@ class InstrumentServiceTest {
 
     private String cacheEntry(Long id, String ticker, String name) throws Exception {
         return jsonMapper.writeValueAsString(new InstrumentSearchCacheEntry(id, ticker, name));
+    }
+
+    @Test
+    void whenUserDoesNotExist_thenSearchFailsBeforeAccessingInstrumentRepositories() {
+        when(userRepository.findById(404L)).thenReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class,
+                () -> instrumentService.search(404L, null, null, 0, 20));
+        org.mockito.Mockito.verifyNoInteractions(instrumentRepository, cache);
     }
 }

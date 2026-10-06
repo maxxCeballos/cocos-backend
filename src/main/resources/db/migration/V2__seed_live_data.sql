@@ -83,9 +83,9 @@ INSERT INTO orders (id, instrumentid, userid, size, price, type, side, status, d
     (6, 47, 1, 100, 950.00, 'MARKET', 'SELL', 'REJECTED', '2023-07-12 16:11:20.000000'),
     (7, 31, 1, 60, 1500.00, 'LIMIT', 'BUY', 'NEW', '2023-07-13 11:13:20.000000'),
     (8, 66, 1, 100000, 1.00, 'MARKET', 'CASH_OUT', 'FILLED', '2023-07-13 12:31:20.000000'),
-    (9, 31, 1, 20, 1540.00, 'LIMIT', 'BUY', 'FILLED', '2023-07-13 12:51:20.000000'),
+    (9, 31, 1, 30, 1540.00, 'LIMIT', 'BUY', 'FILLED', '2023-07-13 12:51:20.000000'),
     (10, 54, 1, 500, 250.00, 'MARKET', 'BUY', 'FILLED', '2023-07-13 14:11:20.000000'),
-    (11, 31, 1, 30, 1530.00, 'MARKET', 'SELL', 'FILLED', '2023-07-13 15:13:20.000000');
+    (11, 31, 1, 20, 1530.00, 'MARKET', 'SELL', 'FILLED', '2023-07-13 15:13:20.000000');
 
 INSERT INTO marketdata (id, instrumentid, high, low, open, close, previousclose, date) VALUES
     (1, 12, NULL, NULL, NULL, 20.50, 20.50, '2023-07-13'),

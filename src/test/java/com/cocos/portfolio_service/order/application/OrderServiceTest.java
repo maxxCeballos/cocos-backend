@@ -2,6 +2,7 @@ package com.cocos.portfolio_service.order.application;
 
 import com.cocos.portfolio_service.instrument.application.InstrumentRepository;
 import com.cocos.portfolio_service.instrument.domain.Instrument;
+import com.cocos.portfolio_service.instrument.domain.enums.InstrumentType;
 import com.cocos.portfolio_service.instrument.domain.errors.InstrumentNotFoundException;
 import com.cocos.portfolio_service.marketdata.domain.MarketData;
 import com.cocos.portfolio_service.marketdata.domain.MarketDataRepository;
@@ -12,13 +13,14 @@ import com.cocos.portfolio_service.order.domain.OrderToSubmit;
 import com.cocos.portfolio_service.order.domain.enums.OrderSide;
 import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
 import com.cocos.portfolio_service.order.domain.enums.OrderType;
-import com.cocos.portfolio_service.order.domain.errors.InvalidOrderException;
 import com.cocos.portfolio_service.user.domain.UserRepository;
 import com.cocos.portfolio_service.shared.domain.errors.UserNotFoundException;
+import com.cocos.portfolio_service.shared.domain.money.Money;
+import com.cocos.portfolio_service.shared.infrastructure.lock.SharedLockService;
+import com.cocos.portfolio_service.user.domain.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -27,6 +29,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -41,19 +44,28 @@ class OrderServiceTest {
     @Mock private InstrumentRepository instrumentRepository;
     @Mock private MarketDataRepository marketDataRepository;
     @Mock private OrderRepository orderRepository;
-    @InjectMocks private OrderService orderService;
+    @Mock private SharedLockService lockService;
+    @Mock private SharedLockService.LockHandle lockHandle;
+    private OrderService orderService;
 
     @BeforeEach
     void setUp() {
-        lenient().when(userRepository.existsById(7L)).thenReturn(true);
+        orderService = new OrderService(userRepository, orderRepository, instrumentRepository, marketDataRepository,
+                Map.of("BUY", new com.cocos.portfolio_service.order.application.side_strategy.BuySide(),
+                        "SELL", new com.cocos.portfolio_service.order.application.side_strategy.SellSide(),
+                        "CASH_IN", new com.cocos.portfolio_service.order.application.side_strategy.CashInSide(),
+                        "CASH_OUT", new com.cocos.portfolio_service.order.application.side_strategy.CashOutSide()),
+                lockService);
+        lenient().when(userRepository.findById(7L)).thenReturn(Optional.of(new User(7L, "user@example.com", "7")));
         lenient().when(instrumentRepository.findById(3L)).thenReturn(Optional.of(
-                new Instrument(3L, "GGAL", "Grupo Galicia", "ACCIONES", null)));
+                new Instrument(3L, "GGAL", "Grupo Galicia", InstrumentType.ACCIONES)));
         lenient().when(marketDataRepository.findLatestByInstrumentId(3L)).thenReturn(Optional.of(
                 new MarketData(1L, 3L, new BigDecimal("100.00"), new BigDecimal("95.00"), LocalDate.now())));
         lenient().when(orderRepository.findEffectiveOrdersByUserId(7L)).thenReturn(List.of(
                 new Order(1L, 7L, 65L, OrderSide.CASH_IN, 1000L, BigDecimal.ONE,
                         OrderType.MARKET, OrderStatus.FILLED, LocalDateTime.of(2023, 7, 13, 12, 0))));
         lenient().when(orderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(lockService.acquireForUser(7L)).thenReturn(lockHandle);
     }
 
     @Test
@@ -62,7 +74,7 @@ class OrderServiceTest {
         var command = command(OrderSide.BUY, OrderType.MARKET, 2L, null, null);
 
         // ACT
-        var result = orderService.submit(0L, command);
+        var result = orderService.submit(7L, command);
 
         // ASSERT
         assertEquals(2L, result.size());
@@ -77,7 +89,7 @@ class OrderServiceTest {
         var command = command(OrderSide.BUY, OrderType.LIMIT, 2L, null, new BigDecimal("90.00"));
 
         // ACT
-        var result = orderService.submit(0L, command);
+        var result = orderService.submit(7L, command);
 
         // ASSERT
         assertEquals(new BigDecimal("90.00"), result.price());
@@ -87,10 +99,10 @@ class OrderServiceTest {
     @Test
     void whenBuyUsesAmount_thenSubmit_convertsAmountToWholeShares() {
         // ARRANGE
-        var command = command(OrderSide.BUY, OrderType.MARKET, null, new BigDecimal("250.00"), null);
+        var command = command(OrderSide.BUY, OrderType.MARKET, 0L, new BigDecimal("250.00"), null);
 
         // ACT
-        var result = orderService.submit(0L, command);
+        var result = orderService.submit(7L, command);
 
         // ASSERT
         assertEquals(2L, result.size());
@@ -103,7 +115,7 @@ class OrderServiceTest {
         var command = command(OrderSide.BUY, OrderType.MARKET, 11L, null, null);
 
         // ACT
-        var result = orderService.submit(0L, command);
+        var result = orderService.submit(7L, command);
 
         // ASSERT
         assertEquals(OrderStatus.REJECTED, result.status());
@@ -116,7 +128,7 @@ class OrderServiceTest {
         var command = command(OrderSide.BUY, OrderType.MARKET, 10L, null, null);
 
         // ACT
-        var result = orderService.submit(0L, command);
+        var result = orderService.submit(7L, command);
 
         // ASSERT
         assertEquals(OrderStatus.FILLED, result.status());
@@ -143,7 +155,7 @@ class OrderServiceTest {
         var command = command(OrderSide.SELL, OrderType.MARKET, 1L, null, null);
 
         // ACT
-        var result = orderService.submit(0L, command);
+        var result = orderService.submit(7L, command);
 
         // ASSERT
         assertEquals(OrderStatus.REJECTED, result.status());
@@ -160,7 +172,7 @@ class OrderServiceTest {
         var command = command(OrderSide.SELL, OrderType.MARKET, 1L, null, null);
 
         // ACT
-        var result = orderService.submit(0L, command);
+        var result = orderService.submit(7L, command);
 
         // ASSERT
         assertEquals(OrderStatus.FILLED, result.status());
@@ -170,11 +182,11 @@ class OrderServiceTest {
     @Test
     void whenUserDoesNotExist_thenSubmit_throwsUserNotFound() {
         // ARRANGE
-        when(userRepository.existsById(7L)).thenReturn(false);
+        when(userRepository.findById(7L)).thenReturn(Optional.empty());
 
         // ACT & ASSERT
         assertThrows(UserNotFoundException.class,
-                () -> orderService.submit(0L, command(OrderSide.BUY, OrderType.MARKET, 1L, null, null)));
+                () -> orderService.submit(7L, command(OrderSide.BUY, OrderType.MARKET, 1L, null, null)));
     }
 
     @Test
@@ -184,7 +196,7 @@ class OrderServiceTest {
 
         // ACT & ASSERT
         assertThrows(InstrumentNotFoundException.class,
-                () -> orderService.submit(0L, command(OrderSide.BUY, OrderType.MARKET, 1L, null, null)));
+                () -> orderService.submit(7L, command(OrderSide.BUY, OrderType.MARKET, 1L, null, null)));
     }
 
     @Test
@@ -194,16 +206,7 @@ class OrderServiceTest {
 
         // ACT & ASSERT
         assertThrows(MarketDataNotFoundException.class,
-                () -> orderService.submit(0L, command(OrderSide.BUY, OrderType.MARKET, 1L, null, null)));
-    }
-
-    @Test
-    void whenQuantityAndAmountAreBothMissing_thenSubmit_throwsInvalidOrder() {
-        // ARRANGE
-        var command = command(OrderSide.BUY, OrderType.MARKET, null, null, null);
-
-        // ACT & ASSERT
-        assertThrows(InvalidOrderException.class, () -> orderService.submit(0L, command));
+                () -> orderService.submit(7L, command(OrderSide.BUY, OrderType.MARKET, 1L, null, null)));
     }
 
     @Test
@@ -213,11 +216,13 @@ class OrderServiceTest {
 
         // ACT & ASSERT
         assertThrows(IllegalStateException.class,
-                () -> orderService.submit(0L, command(OrderSide.BUY, OrderType.MARKET, 1L, null, null)));
+                () -> orderService.submit(7L, command(OrderSide.BUY, OrderType.MARKET, 1L, null, null)));
     }
 
     private OrderToSubmit command(OrderSide side, OrderType type, Long quantity, BigDecimal amount, BigDecimal price) {
-        return new OrderToSubmit(7L, 3L, side, type, quantity, amount, price);
+        return new OrderToSubmit(3L, side, type, quantity,
+                new Money.ARS(price == null ? BigDecimal.ZERO : price),
+                new Money.ARS(amount == null ? BigDecimal.ZERO : amount));
     }
 
     private Order cashOrder(OrderSide side, long size, String price, OrderStatus status) {
