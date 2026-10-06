@@ -23,7 +23,7 @@ class CashInSideTest {
     private final OrderContext currencyContext = new OrderContext(
             new User(7L, "user@example.com", "7"),
             new Instrument(3L, "ARS", "Pesos", InstrumentType.MONEDA),
-            List.of(), null, new Money.ARS(BigDecimal.ZERO));
+            List.of(), new Money.ARS(BigDecimal.ZERO));
 
     @Test
     void cashInOnCurrencyInstrumentCreatesFilledMarketOrderAtUnitPrice() {
@@ -49,7 +49,7 @@ class CashInSideTest {
 
         var stockContext = new OrderContext(currencyContext.user(),
                 new Instrument(4L, "GGAL", "Grupo Galicia", InstrumentType.ACCIONES),
-                List.of(), null, new Money.ARS(BigDecimal.ZERO));
+                List.of(), new Money.ARS(BigDecimal.ZERO));
         assertThrows(InvalidOrderException.class, () -> strategy.submit(stockContext,
                 new OrderToSubmit(4L, OrderSide.CASH_IN, OrderType.MARKET, 500L,
                         new Money.ARS(BigDecimal.ZERO), new Money.ARS(BigDecimal.ZERO))));

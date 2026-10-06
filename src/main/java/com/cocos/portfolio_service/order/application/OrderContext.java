@@ -12,6 +12,5 @@ public record OrderContext(
         User user,
         Instrument instrument,
         List<Order> orders,
-        MarketData marketData,
         Money.ARS availableCash
 ) { }

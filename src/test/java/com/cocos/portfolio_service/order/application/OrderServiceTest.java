@@ -50,9 +50,9 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        orderService = new OrderService(userRepository, orderRepository, instrumentRepository, marketDataRepository,
-                Map.of("BUY", new com.cocos.portfolio_service.order.application.side_strategy.BuySide(),
-                        "SELL", new com.cocos.portfolio_service.order.application.side_strategy.SellSide(),
+        orderService = new OrderService(userRepository, orderRepository, instrumentRepository,
+                Map.of("BUY", new com.cocos.portfolio_service.order.application.side_strategy.BuySide(marketDataRepository),
+                        "SELL", new com.cocos.portfolio_service.order.application.side_strategy.SellSide(marketDataRepository),
                         "CASH_IN", new com.cocos.portfolio_service.order.application.side_strategy.CashInSide(),
                         "CASH_OUT", new com.cocos.portfolio_service.order.application.side_strategy.CashOutSide()),
                 lockService);
@@ -207,6 +207,39 @@ class OrderServiceTest {
         // ACT & ASSERT
         assertThrows(MarketDataNotFoundException.class,
                 () -> orderService.submit(7L, command(OrderSide.BUY, OrderType.MARKET, 1L, null, null)));
+    }
+
+    @Test
+    void whenMarketDataDoesNotExist_thenSell_throwsMarketDataNotFound() {
+        when(marketDataRepository.findLatestByInstrumentId(3L)).thenReturn(Optional.empty());
+
+        assertThrows(MarketDataNotFoundException.class,
+                () -> orderService.submit(7L, command(OrderSide.SELL, OrderType.MARKET, 1L, null, null)));
+    }
+
+    @Test
+    void whenCashInSubmitted_thenSubmit_doesNotLookupMarketData() {
+        when(instrumentRepository.findById(65L)).thenReturn(Optional.of(
+                new Instrument(65L, "ARS", "Pesos", InstrumentType.MONEDA)));
+
+        var result = orderService.submit(7L, new OrderToSubmit(65L, OrderSide.CASH_IN, OrderType.MARKET, 100L,
+                new Money.ARS(BigDecimal.ZERO), new Money.ARS(BigDecimal.ZERO)));
+
+        assertEquals(BigDecimal.ONE, result.price());
+        assertEquals(OrderStatus.FILLED, result.status());
+        org.mockito.Mockito.verifyNoInteractions(marketDataRepository);
+    }
+
+    @Test
+    void whenCashOutSubmitted_thenSubmit_doesNotLookupMarketData() {
+        when(instrumentRepository.findById(65L)).thenReturn(Optional.of(
+                new Instrument(65L, "ARS", "Pesos", InstrumentType.MONEDA)));
+
+        var result = orderService.submit(7L, new OrderToSubmit(65L, OrderSide.CASH_OUT, OrderType.MARKET, 100L,
+                new Money.ARS(BigDecimal.ZERO), new Money.ARS(BigDecimal.ZERO)));
+
+        assertEquals(BigDecimal.ONE, result.price());
+        org.mockito.Mockito.verifyNoInteractions(marketDataRepository);
     }
 
     @Test

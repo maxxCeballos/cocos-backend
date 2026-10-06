@@ -3,9 +3,6 @@ package com.cocos.portfolio_service.order.application;
 import com.cocos.portfolio_service.instrument.application.InstrumentRepository;
 import com.cocos.portfolio_service.instrument.domain.Instrument;
 import com.cocos.portfolio_service.instrument.domain.errors.InstrumentNotFoundException;
-import com.cocos.portfolio_service.marketdata.domain.MarketData;
-import com.cocos.portfolio_service.marketdata.domain.MarketDataRepository;
-import com.cocos.portfolio_service.marketdata.domain.errors.MarketDataNotFoundException;
 import com.cocos.portfolio_service.order.application.ports.IOrderService;
 import com.cocos.portfolio_service.order.application.ports.OrderRepository;
 import com.cocos.portfolio_service.order.application.side_strategy.SideStrategy;
@@ -32,7 +29,6 @@ public class OrderService implements IOrderService {
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
     private final InstrumentRepository instrumentRepository;
-    private final MarketDataRepository marketDataRepository;
     private final Map<String, SideStrategy> strategies;
     private final SharedLockService lockService;
 
@@ -40,13 +36,11 @@ public class OrderService implements IOrderService {
             UserRepository userRepository,
             OrderRepository orderRepository,
             InstrumentRepository instrumentRepository,
-            MarketDataRepository marketDataRepository,
             Map<String, SideStrategy> strategies,
             SharedLockService lockService) {
         this.userRepository = userRepository;
         this.orderRepository = orderRepository;
         this.instrumentRepository = instrumentRepository;
-        this.marketDataRepository = marketDataRepository;
         this.strategies = strategies;
         this.lockService = lockService;
     }
@@ -80,28 +74,21 @@ public class OrderService implements IOrderService {
                 () -> userRepository.findById(userId));
         CompletableFuture<List<Order>> ordersFuture = CompletableFuture.supplyAsync(
                 () -> orderRepository.findEffectiveOrdersByUserId(userId));
+        CompletableFuture<Optional<Instrument>> instrumentFuture = CompletableFuture.supplyAsync(
+                () -> instrumentRepository.findById(instrumentId));
 
-        awaitAll(userFuture, ordersFuture);
+        awaitAll(userFuture, ordersFuture, instrumentFuture);
 
         Optional<User> userOpt = userFuture.join();
         List<Order> orders = ordersFuture.join();
+        Optional<Instrument> instOpt = instrumentFuture.join();
 
         if(userOpt.isEmpty()) throw new UserNotFoundException(userId);
-
-        CompletableFuture<Optional<Instrument>> instrumentFuture = CompletableFuture.supplyAsync(
-                () -> instrumentRepository.findById(instrumentId));
-        CompletableFuture<Optional<MarketData>> marketDataFuture = CompletableFuture.supplyAsync(
-                () -> marketDataRepository.findLatestByInstrumentId(instrumentId));
-        awaitAll(instrumentFuture,marketDataFuture);
-
-        Optional<Instrument> instOpt = instrumentFuture.join();
-        Optional<MarketData> marketDataOpt = marketDataFuture.join();
         if(instOpt.isEmpty()) throw new InstrumentNotFoundException(instrumentId);
-        if(marketDataOpt.isEmpty()) throw new MarketDataNotFoundException(instrumentId);
 
         Money.ARS availableCash = calculateAvailableCash(orders);
 
-        return new OrderContext(userOpt.get(), instOpt.get(), orders, marketDataOpt.get(), availableCash);
+        return new OrderContext(userOpt.get(), instOpt.get(), orders, availableCash);
     }
 
     private void awaitAll(CompletableFuture<?>... futures) {

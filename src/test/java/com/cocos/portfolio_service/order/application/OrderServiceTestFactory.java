@@ -19,8 +19,8 @@ public final class OrderServiceTestFactory {
     public static OrderService create(UserRepository users, OrderRepository orders,
                                       InstrumentRepository instruments, MarketDataRepository marketData,
                                       SharedLockService locks) {
-        return new OrderService(users, orders, instruments, marketData,
-                Map.of("BUY", new BuySide(), "SELL", new SellSide(),
+        return new OrderService(users, orders, instruments,
+                Map.of("BUY", new BuySide(marketData), "SELL", new SellSide(marketData),
                         "CASH_IN", new CashInSide(), "CASH_OUT", new CashOutSide()), locks);
     }
 }

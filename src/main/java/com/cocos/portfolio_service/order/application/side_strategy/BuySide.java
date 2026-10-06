@@ -1,5 +1,8 @@
 package com.cocos.portfolio_service.order.application.side_strategy;
 
+import com.cocos.portfolio_service.marketdata.domain.MarketData;
+import com.cocos.portfolio_service.marketdata.domain.MarketDataRepository;
+import com.cocos.portfolio_service.marketdata.domain.errors.MarketDataNotFoundException;
 import com.cocos.portfolio_service.order.application.OrderContext;
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.OrderToSubmit;
@@ -13,17 +16,27 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Log4j2
 @Service("BUY")
 public class BuySide implements SideStrategy {
+
+    private final MarketDataRepository marketDataRepository;
+
+    public BuySide(MarketDataRepository marketDataRepository) {
+        this.marketDataRepository = marketDataRepository;
+    }
 
     public Order submit(OrderContext context, OrderToSubmit orderToSubmit) {
         Long instrumentId = orderToSubmit.instrumentId();
         OrderStatus status = orderToSubmit.type().equals(OrderType.MARKET) ? OrderStatus.FILLED : OrderStatus.NEW;
         Long size = orderToSubmit.size();
 
-        Money.ARS moneyToInvestByUnit = new Money.ARS(context.marketData().close());
+        Optional<MarketData> marketDataOpt = marketDataRepository.findLatestByInstrumentId(instrumentId);
+        if(marketDataOpt.isEmpty()) throw new MarketDataNotFoundException(instrumentId);
+
+        Money.ARS moneyToInvestByUnit = new Money.ARS(marketDataOpt.get().close());
         if(OrderType.LIMIT.equals(orderToSubmit.type())) {
             moneyToInvestByUnit = orderToSubmit.price();
         }

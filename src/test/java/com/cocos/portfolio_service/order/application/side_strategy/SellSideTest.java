@@ -1,5 +1,6 @@
 package com.cocos.portfolio_service.order.application.side_strategy;
 
+import com.cocos.portfolio_service.marketdata.domain.MarketDataRepository;
 import com.cocos.portfolio_service.order.domain.Order;
 import com.cocos.portfolio_service.order.domain.enums.OrderSide;
 import com.cocos.portfolio_service.order.domain.enums.OrderStatus;
@@ -9,11 +10,12 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import static org.mockito.Mockito.mock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class SellSideTest {
-    private final SellSide sellSide = new SellSide();
+    private final SellSide sellSide = new SellSide(mock(MarketDataRepository.class));
 
     @Test
     void calculateInstrumentPossessions_sumsFilledBuysAndSubtractsFilledAndNewSells() {

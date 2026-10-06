@@ -117,6 +117,7 @@ class PortfolioService implements IPortfolioService {
 
         for (Map.Entry<Long, Long> instrumentCant : instrumentToCantMap.entrySet()) {
             MarketData instMarketdata = instrumentToMarketdataMap.get(instrumentCant.getKey());
+            if (instMarketdata == null) throw new MarketDataNotFoundException(instrumentCant.getKey());
             Money.ARS totalInstrumentValue = new Money.ARS(instMarketdata.close())
                     .multiply(BigDecimal.valueOf(instrumentCant.getValue()));
             totalStockShareValue = totalStockShareValue.add(totalInstrumentValue);
@@ -150,6 +151,7 @@ class PortfolioService implements IPortfolioService {
         for(Long instrumentId: instrumentIds) {
             Instrument instrument = instrumentsMap.get(instrumentId);
             MarketData marketData = instrumentToMarketdataMap.get(instrumentId);
+            if (marketData == null) throw new MarketDataNotFoundException(instrumentId);
             Long size = instrumentToCantMap.get(instrumentId);
             List<MarketData> instrumentMarketData = marketsData.stream()
                     .filter(data -> Objects.equals(data.instrumentId(), instrumentId))
