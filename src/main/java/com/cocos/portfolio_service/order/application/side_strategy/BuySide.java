@@ -78,7 +78,7 @@ public class BuySide implements SideStrategy {
     }
 
     private Long buyByBudget(Money.ARS availableCash, Money.ARS budget, Money.ARS close) {
-        Long size;
+        long size;
 
         if(!hasEnoughMoney(availableCash, budget)) {
             size = -1L;
