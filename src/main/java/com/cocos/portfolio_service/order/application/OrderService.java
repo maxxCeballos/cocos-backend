@@ -56,11 +56,11 @@ public class OrderService implements IOrderService {
         if(instOpt.isEmpty()) throw new InstrumentNotFoundException(orderToSubmit.instrumentId());
 
         SideStrategy strategy = strategies.get(orderToSubmit.side().toString());
-        OrderContext context = buildContext(userId, orderToSubmit.instrumentId());
 
         LockHandle lock = lockService.acquireForUser(userId);
 
         try {
+            OrderContext context = buildContext(userId, orderToSubmit.instrumentId());
             Order orderToSave = strategy.submit(context, orderToSubmit);
             Order orderSaved = orderRepository.save(orderToSave);
             return orderSaved;
